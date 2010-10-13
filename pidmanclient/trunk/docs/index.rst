@@ -6,10 +6,17 @@
 Welcome to Pidman Rest Client's documentation!
 ==============================================
 
-Contents:
+.. include:: ../README
 
+.. include:: ../CHANGELOG
+
+Contents:
+=========
 .. toctree::
    :maxdepth: 2
+
+.. autoclass:: pidservices.clients.PidmanRestClient
+   :members:
 
 Indices and tables
 ==================
@@ -17,4 +24,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

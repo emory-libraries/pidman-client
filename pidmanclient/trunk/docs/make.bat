@@ -5,6 +5,7 @@ REM Command file for Sphinx documentation
 set SPHINXBUILD=sphinx-build
 set BUILDDIR=_build
 set ALLSPHINXOPTS=-d %BUILDDIR%/doctrees %SPHINXOPTS% .
+set PYTHONPATH=%PYTHONPATH%;..
 if NOT "%PAPER%" == "" (
 	set ALLSPHINXOPTS=-D latex_paper_size=%PAPER% %ALLSPHINXOPTS%
 )

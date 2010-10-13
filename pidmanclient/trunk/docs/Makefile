@@ -1,6 +1,7 @@
 # Makefile for Sphinx documentation
 #
-
+# Putting the project source on the python path.
+export PYTHONPATH=..
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
