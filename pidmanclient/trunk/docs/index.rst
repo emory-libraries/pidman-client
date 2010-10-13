@@ -15,8 +15,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-.. autoclass:: pidservices.clients.PidmanRestClient
-   :members:
+   codedoc
 
 Indices and tables
 ==================

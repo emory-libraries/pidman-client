@@ -1,6 +1,8 @@
 """
 *"Fail at Love and the other tests don't matter"*
+
 - **Richard Bach**
+
 """
 
 import unittest
@@ -19,7 +21,9 @@ class PidmanRestClientTest(unittest.TestCase):
         """Tests the REST return for searching pids."""
 
         data = self.noauth_client.search_pids({})
-        self.assertFalse(data)
+        # TODO: Change this to a real test when the staging server is udpated
+        # to include the rest API code.
+        self.assertFalse(data, "No return when trying to search pids!!")
 
 if __name__ == '__main__':
     unittest.main()
