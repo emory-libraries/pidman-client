@@ -11,7 +11,7 @@ TODO: Test this note out to see what it gets us.
 
 import urllib2, urllib, re
 
-class PidmanRestClient:
+class PidmanRestClient(object):
     """
     Provides minimal REST client support for the pidmanager REST API.  See
     that project documentation for details on the REST API.  This class will
@@ -86,5 +86,5 @@ class PidmanRestClient:
             return urllib2.urlopen(url, querystring).read()
         except urllib2.HTTPError as e:
             err = "%s for %s?%s" % (e, url, querystring)
-            print err
+            # print err
             return err
