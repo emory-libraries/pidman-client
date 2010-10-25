@@ -393,8 +393,6 @@ class PidmanRestClientTest(unittest.TestCase):
     def test_update_target(self):
         """Test updating an existing target."""
         # Test a normal working return.
-
-        #(self, type, noid, qualifier='', target_uri=None, proxy=None, active=None):
         client = self._new_client()
         target_info = {'target_uri': 'http://foo.bar/'}
         client.connection.response.data = json.dumps(target_info)
@@ -460,6 +458,23 @@ class PidmanRestClientTest(unittest.TestCase):
         client.connection.response.status = 404
         self.assertRaises(urllib2.HTTPError, client.update_target, 'ark', 'ee', active=False)
 
+    def test_delete_target(self):
+        """Test deleting an existing target."""
+        # Test a normal working return.
+        client = self._new_client()
+        client.connection.response.status = 200
+        deleted = client.delete_ark_target('aa')
+        self.assertTrue(deleted, 'delete_ark_target returns True on successul delete')
+        # base url configured for tests is /pidman
+        expected, got = '/pidman/ark/aa/', client.connection.url
+        self.assertEqual(expected, got,
+            'delete_target requested expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('DELETE', client.connection.method)
+
+        # 404 - target not found
+        client.connection.response.status = 404
+        self.assertRaises(urllib2.HTTPError, client.delete_ark_target, 'ee', 'pdf')
+
 
 # Test the Django wrapper code for pidman Client.
 class DjangoPidmanRestClientTest(unittest.TestCase):
@@ -493,6 +508,7 @@ def suite():
     suite.addTest(PidmanRestClientTest("test_get_target"))
     suite.addTest(PidmanRestClientTest("test_update_pid"))
     suite.addTest(PidmanRestClientTest("test_update_target"))
+    suite.addTest(PidmanRestClientTest("test_delete_target"))
     suite.addTest(DjangoPidmanRestClientTest("test_constructor"))
     suite.addTest(DjangoPidmanRestClientTest("test_runtime_error"))
     return suite

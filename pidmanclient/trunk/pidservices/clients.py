@@ -467,3 +467,21 @@ class PidmanRestClient(object):
          '''Convenience method to update a single existing ark target.  See
          :meth:`update_target` for details and supported parameters.'''
          return self.update_target('ark', *args, **kwargs)
+
+    def delete_ark_target(self, noid, qualifier=''):
+        '''Delete an ARK target.  (Not supported for PURL targets.)
+
+        :param noid: noid identifier for the pid the target belongs to
+        :param qualifier: target qualifier; defaults to unqualified target
+        :returns: True on successful deletion
+        '''
+        type = 'ark'
+        headers = self._secure_headers()
+        url = '%s/%s/%s/%s' % (self.baseurl['path'], type, noid, qualifier)
+        conn = self.connection
+        conn.request("DELETE", url, None, headers)  # no body request
+        response = conn.getresponse()
+        if response.status is not 200:
+            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
+        else:
+            return True
