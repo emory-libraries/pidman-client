@@ -96,7 +96,9 @@ class PidmanRestClientTest(unittest.TestCase):
             'brutus.library.emory.edu', 'Host not correctly set for baseurl!')
         self.assertEqual(client.baseurl['path'],
             '/pidman', 'Path not correctly set for baseurl!')
-        self.assertNotEqual(client.password, 'testuserpass',
+
+        # password should base64 encoded in an auth token
+        self.assert_('testuserpass' not in client._auth_token,
             'Password has not been encoded!')
 
     def test_search_pids(self):
@@ -180,6 +182,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(expected, got,
             'create_pid posts to expected url for new purl; expected %s, got %s' % (expected, got))
         self.assertEqual('POST', client.connection.method)
+        self.assert_('AUTHORIZATION' in client.connection.headers,
+            'auth header is passed when creating a pid')
         # parse post values back into a dictionary - each value is a list
         qs_opts = parse_qs(client.connection.postvalues)
         self.assertEqual(domain, qs_opts['domain'][0],
@@ -258,6 +262,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(expected, got,
             'get_pid requests expected url; expected %s, got %s' % (expected, got))
         self.assertEqual('GET', client.connection.method)
+        self.assert_('AUTHORIZATION' not in client.connection.headers,
+            'auth header is passed when accessing a pid')
 
         # shortcut methods
         client.get_purl('cc')
@@ -289,6 +295,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(expected, got,
             'get_target requests expected url; expected %s, got %s' % (expected, got))
         self.assertEqual('GET', client.connection.method)
+        self.assert_('AUTHORIZATION' not in client.connection.headers,
+            'auth header is not passed when accessing a target')
 
         # target qualifier
         target_info = client.get_target('ark', 'bb', 'PDF')
@@ -327,6 +335,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(expected, got,
             'update_pid requested expected url for update purl; expected %s, got %s' % (expected, got))
         self.assertEqual('PUT', client.connection.method)
+        self.assert_('AUTHORIZATION' in client.connection.headers,
+            'auth header is passed when updating a pid')
         # request body is JSON-encoded update values
         opts = json.loads(client.connection.postvalues)
         self.assertEqual('new name', opts['name'],
@@ -405,6 +415,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(expected, got,
             'update_target requested expected url for update purl target; expected %s, got %s' % (expected, got))
         self.assertEqual('PUT', client.connection.method)
+        self.assert_('AUTHORIZATION' in client.connection.headers,
+            'auth header is passed when updating a target')
         # request body is JSON-encoded update values
         opts = json.loads(client.connection.postvalues)
         self.assertEqual(False, opts['active'],
@@ -470,6 +482,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(expected, got,
             'delete_target requested expected url; expected %s, got %s' % (expected, got))
         self.assertEqual('DELETE', client.connection.method)
+        self.assert_('AUTHORIZATION' in client.connection.headers,
+            'auth header is passed when deleting a target')
 
         # 404 - target not found
         client.connection.response.status = 404
@@ -485,10 +499,15 @@ class DjangoPidmanRestClientTest(unittest.TestCase):
         self.assertEqual(client.baseurl['host'],
             'testpidman.library.emory.edu',
             'Client Base URL %s not expected value.' % client.baseurl)
-        self.assertEqual(client.username, 'testuser',
-            'Client username %s not the expected value' % client.username)
-        self.assertEqual(client.password, base64.b64encode('testpass'),
-            'Client password %s is not expected value' % client.password)
+            
+        # credentials are used to generate a Basic Auth token
+        # reverse the Basic Auth header construction to confirm expected values
+        basic_auth = client._auth_token[len('Basic '):]
+        username, password = basic_auth.decode('base64').split(':')
+        self.assertEqual(username, 'testuser',
+            'Client username %s not the expected value' % username)
+        self.assertEqual(password, 'testpass',
+            'Client password %s is not expected value' % password)
 
      def test_runtime_error(self):
         'Test Django init without required Django settings'

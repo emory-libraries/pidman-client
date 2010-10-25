@@ -51,9 +51,11 @@ class PidmanRestClient(object):
     _rest_target_uri = '%(base_url)s/%(type)s/%(noid)s/%(qualifier)s'
 
     def __init__(self, url, username="", password=""):
-        self._set_baseurl(url)
-        self.username = username
-        self._set_password(password)
+        self._set_baseurl(url)        
+        self._set_auth_token(username, password)
+        # FIXME: should we generate an auth token when username & password are not
+        # specified? Credentials are required for create/delete/update methods...
+        # Seems weird to build an auth token for blank username, blank password
         self.connection = self._get_connection()
 
     def _set_baseurl(self, url):
@@ -84,20 +86,21 @@ class PidmanRestClient(object):
         if self.baseurl['scheme'] is 'https':
             return httplib.HTTPSConnection(self.baseurl['host'])
         return httplib.HTTPConnection(self.baseurl['host'])
-
+    
     def _secure_headers(self):
         """Returns a copy of headers with the intent of using that as a
         method variable so I'm not passing username and password by default.
         It's private because... get your own darn secure heaeders ya hippie!
         """
         headers = self.headers.copy()
-        headers["username"] = self.username
-        headers["password"] = self.password
+        headers['AUTHORIZATION'] = self._auth_token
         return headers
 
-    def _set_password(self, password):
-        """Base 64 encodes the password."""
-        self.password = base64.b64encode(password)
+    def _set_auth_token(self, username, password):
+        """Generate and store Basic authorization token for use with API calls
+        that require user credentials."""
+        token = base64.b64encode('%s:%s' % (username, password))
+        self._auth_token = 'Basic %s' % token
 
     def _check_pid_type(self, type):
         '''Several pid- and target-specific methods take a pid type, but only
@@ -345,7 +348,7 @@ class PidmanRestClient(object):
         url = self._pid_url(type, noid)       # also checks pid type
         
         conn = self.connection
-        conn.request("GET", url, None, headers)     # None = no data in body of request
+        conn.request("GET", url, None, self.headers)     # None = no data in body of request
         response = conn.getresponse()
         if response.status is not 200:
            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
@@ -376,7 +379,7 @@ class PidmanRestClient(object):
         url = self._target_url(type, noid, qualifier)
         
         conn = self.connection
-        conn.request("GET", url, None, headers)     # None = no data in body of request
+        conn.request("GET", url, None, self.headers)     # None = no data in body of request
         response = conn.getresponse()
         if response.status is not 200:
            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
