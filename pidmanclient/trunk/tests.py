@@ -101,6 +101,12 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assert_('testuserpass' not in client._auth_token,
             'Password has not been encoded!')
 
+        # url with trailing slash - treated same as without
+        client = PidmanRestClient('%s/' % self.baseurl)
+        self.assertEqual(client.baseurl['path'],
+            '/pidman', 
+            'Path not correctly set when baseurl specified with trailing slash')
+
     def test_search_pids(self):
         """Tests the REST return for searching pids."""
         # Be a normal return.

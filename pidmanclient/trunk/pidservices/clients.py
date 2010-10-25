@@ -20,14 +20,17 @@ class PidmanRestClient(object):
     """
     Provides minimal REST client support for the pidmanager REST API.  See
     that project documentation for details on the REST API.  This class will
-    build encapulated calls to the Pidman Rest API service.
+    build encapsulated calls to the Pidman Rest API service.
 
-    :param baseurl: base url of the api for the pidman REST service.
-                    note this requires **NO** trailing slash. example
+    API calls that create, delete, or modify objects require valid credentials
+    for a user with appropriate permissions.  API calls are made using Basic
+    Authorization, which base64 encodes username and password.  It is recommended
+    to use HTTPS for any REST API calls that require credentials.
+
+    :param baseurl: base url of the api for the pidman REST service., e.g.
                     ``http://my.domain.com/pidserver``
-    :param username: optional username to query REST API with.
-    :param password: optional password for username to query REST API.  Stored
-                     with base64 encoding.
+    :param username: optional username for REST API access
+    :param password: optional password 
 
     """
     baseurl = {
@@ -66,7 +69,7 @@ class PidmanRestClient(object):
         :param baseurl: string of the base url for the rest api to be normalized
 
         """
-        obj = urlparse(url)
+        obj = urlparse(url.rstrip('/'))
         self.baseurl['scheme'] = obj.scheme
         self.baseurl['host'] = obj.netloc
         self.baseurl['path'] = obj.path
