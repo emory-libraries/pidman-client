@@ -5,11 +5,8 @@
 
 """
 
-import base64
 import json
-import os
 import unittest
-import urllib
 import urllib2
 from urlparse import parse_qs
 
@@ -20,7 +17,6 @@ settings.configure(
             PIDMAN_USER = 'testuser',
             PIDMAN_PASSWORD = 'testpass',
 )
-#os.environ['DJANGO_SETTINGS_MODULE'] = settings
 
 from pidservices.clients import PidmanRestClient
 from pidservices.djangowrapper.shortcuts import DjangoPidmanRestClient
