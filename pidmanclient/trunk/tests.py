@@ -150,7 +150,7 @@ class PidmanRestClientTest(unittest.TestCase):
         client.connection.response.data = '[{"id": 25, "name": "domain name"}]'
         domain = client.request_domain(25)
         self.assertEqual(25, domain[0]['id'])
-        self.assert_('AUTHORIZATION' not in data_client.connection.headers,
+        self.assert_('AUTHORIZATION' not in client.connection.headers,
             'auth header is not passed when accessing a single domain')
 
     def test_update_domain(self):

@@ -190,10 +190,9 @@ class PidmanRestClient(object):
         :param domain_id: ID of the domain to return.
         
         """
-        headers = self._secure_headers()
         conn = self.connection
         url = '%s/domains/%s/' % (self.baseurl['path'], urllib.quote(str(domain_id)))
-        conn.request("GET", url, None, headers)
+        conn.request("GET", url, None, self.headers)
         response = conn.getresponse()
         if response.status is not 200:
            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
