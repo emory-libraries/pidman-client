@@ -120,6 +120,8 @@ class PidmanRestClientTest(unittest.TestCase):
         data_client.connection.response.data = '[{"pid": "testblank"}]'
         data = data_client.list_domains()
         self.assertTrue(data, "No data returned when listing domains.")
+        self.assert_('AUTHORIZATION' not in data_client.connection.headers,
+            'auth header is not passed when listing domains')
 
         # This shoule error
         bad_client = self._new_client()
@@ -135,6 +137,8 @@ class PidmanRestClientTest(unittest.TestCase):
         client.create_domain('Test Domain')
         # I'm actually just testing that this doesn't throw an error.
         self.assertEqual(201, client.connection.response.status)
+        self.assert_('AUTHORIZATION'  in client.connection.headers,
+            'auth header is passed when creating a new domain')
 
         # This SHOULD thrown an error.
         bad_client = self._new_client()
@@ -146,12 +150,16 @@ class PidmanRestClientTest(unittest.TestCase):
         client.connection.response.data = '[{"id": 25, "name": "domain name"}]'
         domain = client.request_domain(25)
         self.assertEqual(25, domain[0]['id'])
+        self.assert_('AUTHORIZATION' not in data_client.connection.headers,
+            'auth header is not passed when accessing a single domain')
 
     def test_update_domain(self):
         """Tests the update method for a single domain."""
         client = self._new_client()
         client.connection.response.data = '[{"id": 25, "name": "The Updated Domain", "policy": "", "parent": ""}]'
         domain = client.update_domain(25, name='The Updated Domain')
+        self.assert_('AUTHORIZATION'  in client.connection.headers,
+            'auth header is passed when updating a domain')
 
         # Test a normal response to ensure it's giving back a pythonic object.
         self.assertEqual(200, client.connection.response.status) # Check the Return
