@@ -232,10 +232,12 @@ class PidmanRestClientTest(unittest.TestCase):
         expected, got = '/pidman/purl/', client.connection.url
         self.assertEqual(expected, got,
             'create_purl posts to expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('POST', client.connection.method)
         client.create_ark(domain, target)
         expected, got = '/pidman/ark/', client.connection.url
         self.assertEqual(expected, got,
             'create_ark posts to expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('POST', client.connection.method)
 
         # 400 - bad request
         client.connection.response.status = 400
@@ -262,10 +264,12 @@ class PidmanRestClientTest(unittest.TestCase):
         expected, got = '/pidman/purl/cc', client.connection.url
         self.assertEqual(expected, got,
             'get_purl requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('GET', client.connection.method)
         client.get_ark('dd')
         expected, got = '/pidman/ark/dd', client.connection.url
         self.assertEqual(expected, got,
             'get_ark requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('GET', client.connection.method)
 
         # 404 - pid not found
         client.connection.response.status = 404
@@ -297,14 +301,164 @@ class PidmanRestClientTest(unittest.TestCase):
         expected, got = '/pidman/purl/cc/', client.connection.url
         self.assertEqual(expected, got,
             'get_purl_target requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('GET', client.connection.method)
         client.get_ark_target('dd', 'XML')
         expected, got = '/pidman/ark/dd/XML', client.connection.url
         self.assertEqual(expected, got,
             'get_ark_target requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('GET', client.connection.method)
+
+        # 404 - target not found
+        client.connection.response.status = 404
+        self.assertRaises(urllib2.HTTPError, client.get_target, 'ark', 'ee')
+
+    def test_update_pid(self):
+        """Test updating an existing pid."""
+        # Test a normal working return.
+        client = self._new_client()
+        pid_info = {'pid': 'foo'}
+        client.connection.response.data = json.dumps(pid_info)
+        client.connection.response.status = 200
+        # minimum required parameters
+        pid = client.update_pid('purl', 'aa', name='new name')
+        self.assertEqual(pid, pid_info)
+        # base url configured for tests is /pidman
+        expected, got = '/pidman/purl/aa', client.connection.url
+        self.assertEqual(expected, got,
+            'update_pid requested expected url for update purl; expected %s, got %s' % (expected, got))
+        self.assertEqual('PUT', client.connection.method)
+        # request body is JSON-encoded update values
+        opts = json.loads(client.connection.postvalues)
+        self.assertEqual('new name', opts['name'],
+            'requested new name value set in request data')
+        # unspecified parameters should not be set in posted data
+        self.assert_('domain' not in opts,
+            'unspecified parameter (domain) not set in posted values')
+        self.assert_('external_system_id' not in opts,
+            'unspecified parameter (external system) not set in posted values')
+        self.assert_('external_system_key' not in opts,
+            'unspecified parameter (external system key) not set in posted values')
+        self.assert_('policy' not in opts,
+            'unspecified parameter (policy) not set in posted values')
+
+        # all parameters
+        domain = 'http://pid.emory.edu/domains/1/'
+        name, ext_sys, ext_id = 'my new pid', 'EUCLID', 'ocm1234'
+        policy = 'Not Guaranteed'
+        pid = client.update_pid('ark', 'bb', domain, name, ext_sys,
+                                    ext_id, policy)
+        expected, got = '/pidman/ark/bb', client.connection.url
+        self.assertEqual(expected, got,
+            'update_pid requests to expected url for new ark; expected %s, got %s' % (expected, got))
+        opts = json.loads(client.connection.postvalues)
+        # all optional values should be set in query string
+        self.assertEqual(domain, opts['domain'],
+            'expected domain value set in posted data')
+        self.assertEqual(ext_sys, opts['external_system_id'],
+            'expected external system id value set in posted data')
+        self.assertEqual(ext_id, opts['external_system_key'],
+            'expected external system key value set in posted data')
+        self.assertEqual(policy, opts['policy'],
+            'expected policy value set in posted data')
+
+        # empty values are valid - e.g., blank out previous value
+        pid = client.update_pid('ark', 'bb', domain='', name='')
+        opts = json.loads(client.connection.postvalues)
+        # all optional values should be set in query string
+        self.assertEqual('', opts['domain'],
+            'expected domain value set in posted data')
+        self.assertEqual('', opts['name'],
+            'expected name value set in posted data')
+
+        # invalid pid type should cause an exception
+        self.assertRaises(Exception, client.update_pid, 'faux-pid')
+
+        # shortcut methods
+        client.update_purl('aa', domain, name)
+        expected, got = '/pidman/purl/aa', client.connection.url
+        self.assertEqual(expected, got,
+            'update_purl requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('PUT', client.connection.method)
+        client.update_ark('bb', domain, name)
+        expected, got = '/pidman/ark/bb', client.connection.url
+        self.assertEqual(expected, got,
+            'update_ark requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('PUT', client.connection.method)
 
         # 404 - pid not found
         client.connection.response.status = 404
-        self.assertRaises(urllib2.HTTPError, client.get_target, 'ark', 'ee')
+        self.assertRaises(urllib2.HTTPError, client.update_pid, 'ark', 'ee', 'domain')
+
+
+    def test_update_target(self):
+        """Test updating an existing target."""
+        # Test a normal working return.
+
+        #(self, type, noid, qualifier='', target_uri=None, proxy=None, active=None):
+        client = self._new_client()
+        target_info = {'target_uri': 'http://foo.bar/'}
+        client.connection.response.data = json.dumps(target_info)
+        client.connection.response.status = 200
+        # minimum required parameters
+        target = client.update_target('purl', 'aa', active=False)
+        self.assertEqual(target, target_info)
+        # base url configured for tests is /pidman
+        expected, got = '/pidman/purl/aa/', client.connection.url
+        self.assertEqual(expected, got,
+            'update_target requested expected url for update purl target; expected %s, got %s' % (expected, got))
+        self.assertEqual('PUT', client.connection.method)
+        # request body is JSON-encoded update values
+        opts = json.loads(client.connection.postvalues)
+        self.assertEqual(False, opts['active'],
+            'update active value set in request data')
+        # unspecified parameters should not be set in posted data
+        self.assert_('target_uri' not in opts,
+            'unspecified parameter (target_uri) not set in update values')
+        self.assert_('proxy' not in opts,
+            'unspecified parameter (proxy) not set in update values')
+
+        # all parameters
+        target, proxy, active = 'http://pid.com', 'MyProxy', True
+        client.update_target('ark', 'bb', 'PDF', target, proxy, active)
+        expected, got = '/pidman/ark/bb/PDF', client.connection.url
+        self.assertEqual(expected, got,
+            'update_target requests expected url for ark target; expected %s, got %s' % (expected, got))
+        opts = json.loads(client.connection.postvalues)
+        # all optional values should be set in query string
+        self.assertEqual(target, opts['target_uri'],
+            'expected target value set in update data')
+        self.assertEqual(proxy, opts['proxy'],
+            'expected proxy value set in update data')
+        self.assertEqual(active, opts['active'],
+            'expected active value set in update data')
+
+        # empty values are valid - e.g., blank out previous value
+        client.update_target('ark', 'bb', 'XML', target_uri='', proxy='')
+        opts = json.loads(client.connection.postvalues)
+        # all optional values should be set in query string
+        self.assertEqual('', opts['target_uri'],
+            'expected target value set in posted data')
+        self.assertEqual('', opts['proxy'],
+            'expected proxy value set in posted data')
+
+        # invalid pid type should cause an exception
+        self.assertRaises(Exception, client.update_target, 'faux-pid', 'bb')
+
+        # shortcut methods
+        client.update_purl_target('aa', target, proxy)
+        expected, got = '/pidman/purl/aa/', client.connection.url
+        self.assertEqual(expected, got,
+            'update_purl_target requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('PUT', client.connection.method)
+        client.update_ark_target('bb', 'PDF', target_uri=target, proxy=proxy)
+        expected, got = '/pidman/ark/bb/PDF', client.connection.url
+        self.assertEqual(expected, got,
+            'update_ark_target requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('PUT', client.connection.method)
+
+        # 404 - target not found
+        client.connection.response.status = 404
+        self.assertRaises(urllib2.HTTPError, client.update_target, 'ark', 'ee', active=False)
 
 
 # Test the Django wrapper code for pidman Client.
@@ -337,6 +491,8 @@ def suite():
     suite.addTest(PidmanRestClientTest("test_create_pid"))
     suite.addTest(PidmanRestClientTest("test_get_pid"))
     suite.addTest(PidmanRestClientTest("test_get_target"))
+    suite.addTest(PidmanRestClientTest("test_update_pid"))
+    suite.addTest(PidmanRestClientTest("test_update_target"))
     suite.addTest(DjangoPidmanRestClientTest("test_constructor"))
     suite.addTest(DjangoPidmanRestClientTest("test_runtime_error"))
     return suite

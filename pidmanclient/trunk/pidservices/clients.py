@@ -94,6 +94,12 @@ class PidmanRestClient(object):
         """Base 64 encodes the password."""
         self.password = base64.b64encode(password)
 
+    def _check_pid_type(self, type):
+        '''Several pid- and target-specific methods take a pid type, but only
+        two values are allowed.'''
+        if type not in self.pid_types:
+            raise Exception('Pid type is not recognized')
+
     def list_domains(self):
         """
         Returns the default domain list from the rest server.
@@ -253,8 +259,7 @@ class PidmanRestClient(object):
         :param qualifier: ARK only - create a qualified target
 
         """
-        if type not in self.pid_types:
-            raise Exception('Pid type is not recognized')
+        self._check_pid_type(type)
 
         headers = self._secure_headers()
 
@@ -300,8 +305,7 @@ class PidmanRestClient(object):
         :param noid: noid identifier for the requested pid
         :returns: a dictionary of information about the requested pid
         """
-        if type not in self.pid_types:
-            raise Exception('Pid type is not recognized')
+        self._check_pid_type(type)
         
         headers = self._secure_headers()
         conn = self.connection
@@ -334,8 +338,8 @@ class PidmanRestClient(object):
         :param qualifier: target qualifier - defaults to unqualified target
         :returns: a dictionary of information about the requested target
         '''
-        if type not in self.pid_types:
-            raise Exception("Pid type '%s' is not recognized" % type)
+        self._check_pid_type(type)
+        
         headers = self._secure_headers()
         conn = self.connection
         url = '%s/%s/%s/%s' % (self.baseurl['path'], type, noid, qualifier)
@@ -353,5 +357,113 @@ class PidmanRestClient(object):
         return self.get_target('purl', noid)    # purl can *only* use default qualifier
 
     def get_ark_target(self, noid, qualifier):
-        'Convenience method to retrieve information abuot an ark target.'
+        'Convenience method to retrieve information about an ark target.'
         return self.get_target('ark', noid, qualifier)
+
+    def update_pid(self, type, noid, domain=None, name=None, external_system=None,
+                external_system_key=None, policy=None):
+        '''Update an existing pid with new information.
+        
+        '''
+        self._check_pid_type(type)
+
+        pid_info = {}
+        # only include fields that are specified - otherwise, will blank out value
+        # on the pid (e.g., remove a policy or external system)
+        if domain is not None:
+            pid_info['domain'] = domain
+        if name is not None:
+            pid_info['name'] = name
+        if external_system is not None:
+            pid_info['external_system_id'] = external_system
+        if external_system_key is not None:
+            pid_info['external_system_key'] = external_system_key
+        if policy is not None:
+            pid_info['policy'] = policy
+
+        # all fields are optional, but at least *one* should be provided
+        if not pid_info:
+            raise Exception("No update data specified!")
+
+        # Setup the data to pass in the request.
+        headers = self._secure_headers()
+        url = '%s/%s/%s' % (self.baseurl['path'], type, noid)
+        body = json.dumps(pid_info)
+
+        conn = self.connection
+        conn.request("PUT", url, body, headers)
+        response = conn.getresponse()
+        if response.status is not 200:
+            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
+        else:
+            # If successful the view returns the object just updated.
+            data = response.read()
+            return json.loads(data)
+
+    def update_purl(self, *args, **kwargs):
+         '''Convenience method to update an existing purl.  See :meth:`update_pid`
+         for details and supported parameters.'''
+         return self.update_pid('purl', *args, **kwargs)
+
+    def update_ark(self, *args, **kwargs):
+         '''Convenience method to update an existing ark.  See :meth:`update_pid`
+         for details and supported parameters.'''
+         return self.update_pid('ark', *args, **kwargs)
+
+
+    def update_target(self, type, noid, qualifier='', target_uri=None, proxy=None,
+                      active=None):
+        '''Update a single pid target.  This method can be used to create new
+        qualified targets on an existing ARK pid.
+
+        :param type: type of pid the target belongs to (purl or ark)
+        :param noid: noid identifier for the pid the target belongs to
+        :param qualifier: target qualifier; defaults to unqualified target
+        :param target_uri: URI the target should resolve to
+        :param proxy: name of the proxy that should be used to resolve the target
+        :param active: boolean, indicating whether the target should be considered
+            active (inactive targets will not be resolved)
+        :returns: dictionary of information about the updated target.
+        '''
+        self._check_pid_type(type)
+
+        target_info = {}
+        # only include fields that are specified - otherwise, will blank out value
+        # on the target (e.g., remove a proxy)
+        if target_uri is not None:
+            target_info['target_uri'] = target_uri
+        if proxy is not None:
+            target_info['proxy'] = proxy
+        if active is not None:
+            target_info['active'] = active
+
+        # all fields are optional, but at least *one* should be provided
+        if not target_info:
+            raise Exception("No update data specified!")
+
+        # Setup the data to pass in the request.
+        headers = self._secure_headers()
+        url = '%s/%s/%s/%s' % (self.baseurl['path'], type, noid, qualifier)
+        body = json.dumps(target_info)
+        conn = self.connection
+        conn.request("PUT", url, body, headers)
+        response = conn.getresponse()
+        if response.status is not 200:
+            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
+        else:
+            # If successful the view returns the object just updated.
+            data = response.read()
+            return json.loads(data)
+
+
+    def update_purl_target(self, noid, *args, **kwargs):
+         '''Convenience method to update a single existing purl target.  See
+         :meth:`update_target` for details and supported parameters.  Qualifier
+         parameter should **not** be provided when using this method since
+         a PURL may only have one, unqualified target.'''
+         return self.update_target('purl', noid, '', *args, **kwargs)
+
+    def update_ark_target(self, *args, **kwargs):
+         '''Convenience method to update a single existing ark target.  See
+         :meth:`update_target` for details and supported parameters.'''
+         return self.update_target('ark', *args, **kwargs)
