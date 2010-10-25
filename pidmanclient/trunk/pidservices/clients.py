@@ -2,7 +2,7 @@
 *"No question is so difficult to answer as that to which the answer is
 obvious."* - **Karl Bismark**
 
-Module contains clases the build clients to interact with the Pidman Application
+Module contains classes that build clients to interact with the Pidman Application
 via services.
 
 TODO: Test this note out to see what it gets us.
@@ -24,7 +24,7 @@ class PidmanRestClient(object):
 
     :param baseurl: base url of the api for the pidman REST service.
                     note this requires **NO** trailing slash. example
-                    'http://my.domain.com/pidserver'
+                    ``http://my.domain.com/pidserver``
     :param username: optional username to query REST API with.
     :param password: optional password for username to query REST API.  Stored
                      with base64 encoding.
@@ -44,6 +44,11 @@ class PidmanRestClient(object):
     }
 
     pid_types = ['ark', 'purl']
+    # pattern for generating a REST api url for pid create/access/update
+    # - no trailing slash here (used to distinguish unqualified target)
+    _rest_pid_uri = '%(base_url)s/%(type)s/%(noid)s'
+    # pattern for generating REST api url for target access/update/delete
+    _rest_target_uri = '%(base_url)s/%(type)s/%(noid)s/%(qualifier)s'
 
     def __init__(self, url, username="", password=""):
         self._set_baseurl(url)
@@ -96,9 +101,39 @@ class PidmanRestClient(object):
 
     def _check_pid_type(self, type):
         '''Several pid- and target-specific methods take a pid type, but only
-        two values are allowed.'''
+        two values are allowed.  Throw an exception if we got anything else.'''
         if type not in self.pid_types:
-            raise Exception('Pid type is not recognized')
+            raise Exception("Pid type '%s' is not recognized" % type)
+
+    def _pid_url(self, type, noid=''):
+        '''Generate REST pid url.  Runs :meth:`_check_pid_type` to check
+        that type is valid before generating url.
+
+        :param type: type of pid (ark or purl)
+        :param noid: pid identifier, or empty for create ark/purl rest uri
+        '''
+        self._check_pid_type(type)
+        return self._rest_pid_uri % {
+            'base_url': self.baseurl['path'],
+            'type': type,
+            'noid': noid,
+        }
+
+    def _target_url(self, type, noid, qualifier=''):
+        '''Generate REST target url.  Runs :meth:`_check_pid_type` to check
+        that type is valid before generating url.
+
+        :param type: type of pid (ark or purl)
+        :param noid: pid identifier, or empty for create ark/purl rest uri
+        :param qualifier: target qualifier, defaults to unqualified target
+        '''
+        self._check_pid_type(type)
+        return self._rest_target_uri % {
+            'base_url': self.baseurl['path'],
+            'type': type,
+            'noid': noid,
+            'qualifier': qualifier,
+        }
 
     def list_domains(self):
         """
@@ -245,8 +280,8 @@ class PidmanRestClient(object):
                 external_system_key=None, policy=None, proxy=None,
                 qualifier=None):
         """
-        Creates a POST request to the rest api with attributes to create
-        a new pid.
+        POST a request to the REST api with the specified values to create a new
+        pid with a single target.
 
         :param type: type of pid to create (purl or ark)
         :param domain: Domain new pid should belong to (specify by REST resource URI)
@@ -256,10 +291,12 @@ class PidmanRestClient(object):
         :param external_system_id: pid identifier in specified external system
         :param policy: policy title
         :param proxy: proxy name
-        :param qualifier: ARK only - create a qualified target
-
+        :param qualifier: (ARK only) create a qualified target
+        :returns: newly created ARK or PURL in resolvable form
+        :rtype: string
         """
-        self._check_pid_type(type)
+        # rest url url for creating the new pid
+        url = self._pid_url(type)       # also checks pid type
 
         headers = self._secure_headers()
 
@@ -280,7 +317,6 @@ class PidmanRestClient(object):
 
         params = urllib.urlencode(pid_opts)
         conn = self.connection
-        url = '%s/%s/' % (self.baseurl['path'], type)
         conn.request("POST", url, params, headers)
         response = conn.getresponse()
         if response.status is not 201: # 201 is the expected return on create.
@@ -289,12 +325,12 @@ class PidmanRestClient(object):
             return response.read() # Should be new purl or ark (resolvable form)
 
     def create_purl(self, *args, **kwargs):
-         '''Convenience method to create a new purl.  See :meth:`create_pid` for
+         '''Convenience method to create a new PURL.  See :meth:`create_pid` for
          details and supported parameters.'''
          return self.create_pid('purl', *args, **kwargs)
 
     def create_ark(self, *args, **kwargs):
-         '''Convenience method to create a new ark.  See :meth:`create_pid` for
+         '''Convenience method to create a new ARK.  See :meth:`create_pid` for
          details and supported parameters.'''
          return self.create_pid('ark', *args, **kwargs)
 
@@ -305,12 +341,10 @@ class PidmanRestClient(object):
         :param noid: noid identifier for the requested pid
         :returns: a dictionary of information about the requested pid
         """
-        self._check_pid_type(type)
+        # rest url url for accessing the requested pid
+        url = self._pid_url(type, noid)       # also checks pid type
         
-        headers = self._secure_headers()
         conn = self.connection
-        # *without* trailing slash for pid info; use trailing slash for unqualified target 
-        url = '%s/%s/%s' % (self.baseurl['path'], type, noid)
         conn.request("GET", url, None, headers)     # None = no data in body of request
         response = conn.getresponse()
         if response.status is not 200:
@@ -338,11 +372,10 @@ class PidmanRestClient(object):
         :param qualifier: target qualifier - defaults to unqualified target
         :returns: a dictionary of information about the requested target
         '''
-        self._check_pid_type(type)
+        # generate target url and check pid type
+        url = self._target_url(type, noid, qualifier)
         
-        headers = self._secure_headers()
         conn = self.connection
-        url = '%s/%s/%s/%s' % (self.baseurl['path'], type, noid, qualifier)
         conn.request("GET", url, None, headers)     # None = no data in body of request
         response = conn.getresponse()
         if response.status is not 200:
@@ -364,8 +397,16 @@ class PidmanRestClient(object):
                 external_system_key=None, policy=None):
         '''Update an existing pid with new information.
         
+        :param type: type of pid (purl or ark)
+        :param domain: Domain pid should belong to (specify by REST resource URI)        
+        :param name: name or identifier for the pid
+        :param external_system: external system name
+        :param external_system_id: pid identifier in specified external system
+        :param policy: policy title
+        :returns: a dictionary of information for the update pid
         '''
-        self._check_pid_type(type)
+        # rest url url for updating the requested pid
+        url = self._pid_url(type, noid)       # also checks pid type
 
         pid_info = {}
         # only include fields that are specified - otherwise, will blank out value
@@ -387,7 +428,6 @@ class PidmanRestClient(object):
 
         # Setup the data to pass in the request.
         headers = self._secure_headers()
-        url = '%s/%s/%s' % (self.baseurl['path'], type, noid)
         body = json.dumps(pid_info)
 
         conn = self.connection
@@ -413,8 +453,9 @@ class PidmanRestClient(object):
 
     def update_target(self, type, noid, qualifier='', target_uri=None, proxy=None,
                       active=None):
-        '''Update a single pid target.  This method can be used to create new
-        qualified targets on an existing ARK pid.
+        '''Update a single pid target.
+
+        This method can be used to add new targets to an existing ARK.
 
         :param type: type of pid the target belongs to (purl or ark)
         :param noid: noid identifier for the pid the target belongs to
@@ -425,7 +466,8 @@ class PidmanRestClient(object):
             active (inactive targets will not be resolved)
         :returns: dictionary of information about the updated target.
         '''
-        self._check_pid_type(type)
+        # generate target url and check pid type
+        url = self._target_url(type, noid, qualifier)
 
         target_info = {}
         # only include fields that are specified - otherwise, will blank out value
@@ -443,7 +485,6 @@ class PidmanRestClient(object):
 
         # Setup the data to pass in the request.
         headers = self._secure_headers()
-        url = '%s/%s/%s/%s' % (self.baseurl['path'], type, noid, qualifier)
         body = json.dumps(target_info)
         conn = self.connection
         conn.request("PUT", url, body, headers)
@@ -469,15 +510,16 @@ class PidmanRestClient(object):
          return self.update_target('ark', *args, **kwargs)
 
     def delete_ark_target(self, noid, qualifier=''):
-        '''Delete an ARK target.  (Not supported for PURL targets.)
+        '''Delete an ARK target.  (Delete is not supported for PURL targets.)
 
         :param noid: noid identifier for the pid the target belongs to
         :param qualifier: target qualifier; defaults to unqualified target
         :returns: True on successful deletion
         '''
         type = 'ark'
+        # generate target url and check pid type
+        url = self._target_url(type, noid, qualifier)        
         headers = self._secure_headers()
-        url = '%s/%s/%s/%s' % (self.baseurl['path'], type, noid, qualifier)
         conn = self.connection
         conn.request("DELETE", url, None, headers)  # no body request
         response = conn.getresponse()
