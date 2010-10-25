@@ -9,7 +9,11 @@ TODO: Test this note out to see what it gets us.
 
 '''
 
-import urllib, urllib2, httplib, base64, json
+import base64
+import httplib
+import json
+import urllib
+import urllib2
 from urlparse import urlparse
 
 class PidmanRestClient(object):
@@ -38,6 +42,8 @@ class PidmanRestClient(object):
         "Content-Length": "0",
         "User-Agent": "x-www-form-urlencoded format",
     }
+
+    pid_types = ['ark', 'purl']
 
     def __init__(self, url, username="", password=""):
         self._set_baseurl(url)
@@ -129,7 +135,7 @@ class PidmanRestClient(object):
         conn.request("POST", url, params, headers)
         response = conn.getresponse()
         if response.status is not 201: # 201 is the expected return on create.
-            raise urlib2.HTTPError(url, response.status, response.reason, None, None)
+            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
         else:
             return response.read() # Should be a text response about success.
 
@@ -146,7 +152,7 @@ class PidmanRestClient(object):
         conn.request("GET", url, None, headers)
         response = conn.getresponse()
         if response.status is not 200:
-           raise urlib2.HTTPError(url, response.status, response.reason, None, None)
+           raise urllib2.HTTPError(url, response.status, response.reason, None, None)
         else:
             data = response.read() 
             return json.loads(data)
@@ -229,4 +235,123 @@ class PidmanRestClient(object):
             data = response.read()
             return data
 
+    def create_pid(self, type, domain, target_uri, name=None, external_system=None,
+                external_system_key=None, policy=None, proxy=None,
+                qualifier=None):
+        """
+        Creates a POST request to the rest api with attributes to create
+        a new pid.
 
+        :param type: type of pid to create (purl or ark)
+        :param domain: Domain new pid should belong to (specify by REST resource URI)
+        :param target_uri: URI the pid target should resolve to
+        :param name: name or identifier for the pid
+        :param external_system: external system name
+        :param external_system_id: pid identifier in specified external system
+        :param policy: policy title
+        :param proxy: proxy name
+        :param qualifier: ARK only - create a qualified target
+
+        """
+        if type not in self.pid_types:
+            raise Exception('Pid type is not recognized')
+
+        headers = self._secure_headers()
+
+        # build the request parameters
+        pid_opts = {'domain': domain, 'target_uri': target_uri}
+        if name is not None:
+            pid_opts['name'] = name
+        if external_system is not None:
+            pid_opts['external_system_id'] = external_system
+        if external_system_key is not None:
+            pid_opts['external_system_key'] = external_system_key
+        if policy is not None:
+            pid_opts['policy'] = policy
+        if proxy is not None:
+            pid_opts['proxy'] = proxy
+        if qualifier is not None:
+            pid_opts['qualifier'] = qualifier
+
+        params = urllib.urlencode(pid_opts)
+        conn = self.connection
+        url = '%s/%s/' % (self.baseurl['path'], type)
+        conn.request("POST", url, params, headers)
+        response = conn.getresponse()
+        if response.status is not 201: # 201 is the expected return on create.
+            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
+        else:
+            return response.read() # Should be new purl or ark (resolvable form)
+
+    def create_purl(self, *args, **kwargs):
+         '''Convenience method to create a new purl.  See :meth:`create_pid` for
+         details and supported parameters.'''
+         return self.create_pid('purl', *args, **kwargs)
+
+    def create_ark(self, *args, **kwargs):
+         '''Convenience method to create a new ark.  See :meth:`create_pid` for
+         details and supported parameters.'''
+         return self.create_pid('ark', *args, **kwargs)
+
+    def get_pid(self, type, noid):
+        """Get information about a single pid, identified by type and noid.
+
+        :param type: type of pid (ark or purl)
+        :param noid: noid identifier for the requested pid
+        :returns: a dictionary of information about the requested pid
+        """
+        if type not in self.pid_types:
+            raise Exception('Pid type is not recognized')
+        
+        headers = self._secure_headers()
+        conn = self.connection
+        # *without* trailing slash for pid info; use trailing slash for unqualified target 
+        url = '%s/%s/%s' % (self.baseurl['path'], type, noid)
+        conn.request("GET", url, None, headers)     # None = no data in body of request
+        response = conn.getresponse()
+        if response.status is not 200:
+           raise urllib2.HTTPError(url, response.status, response.reason, None, None)
+        else:
+            data = response.read()
+            return json.loads(data)
+
+    def get_purl(self, noid):
+         '''Convenience method to access information about a purl.  See
+         :meth:`get_pid` for more details.'''
+         return self.get_pid('purl', noid)
+
+    def get_ark(self, noid):
+         '''Convenience method to access information about an ark.  See
+         :meth:`get_pid` for more details.'''
+         return self.get_pid('ark', noid)
+
+    def get_target(self, type, noid, qualifier=''):
+        '''Get information about a single purl or ark target, identified by pid
+        type, noid, and qualifier.
+
+        :param type: type of pid (ark or purl)
+        :param noid: noid identifier for the pid the target belongs to
+        :param qualifier: target qualifier - defaults to unqualified target
+        :returns: a dictionary of information about the requested target
+        '''
+        if type not in self.pid_types:
+            raise Exception("Pid type '%s' is not recognized" % type)
+        headers = self._secure_headers()
+        conn = self.connection
+        url = '%s/%s/%s/%s' % (self.baseurl['path'], type, noid, qualifier)
+        conn.request("GET", url, None, headers)     # None = no data in body of request
+        response = conn.getresponse()
+        if response.status is not 200:
+           raise urllib2.HTTPError(url, response.status, response.reason, None, None)
+        else:
+            data = response.read()
+            return json.loads(data)
+
+    def get_purl_target(self, noid):
+        'Convenience method to retrieve information about a purl target.'
+        # probably redundant, since a purl only has one target, but including for consistency
+        return self.get_target('purl', noid)    # purl can *only* use default qualifier
+
+    def get_ark_target(self, noid, qualifier):
+        'Convenience method to retrieve information abuot an ark target.'
+        return self.get_target('ark', noid, qualifier)
