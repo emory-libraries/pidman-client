@@ -145,6 +145,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(201, client.connection.response.status)
         self.assert_('AUTHORIZATION'  in client.connection.headers,
             'auth header is passed when creating a new domain')
+        self.assertEqual('text/plain', client.connection.headers['Accept'],
+            'Accept header should be set to text/plain when creating a new domain')
 
         # This SHOULD thrown an error.
         bad_client = self._new_client()
@@ -198,6 +200,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual('POST', client.connection.method)
         self.assert_('AUTHORIZATION' in client.connection.headers,
             'auth header is passed when creating a pid')
+        self.assertEqual('text/plain', client.connection.headers['Accept'],
+            'Accept header should be set to text/plain when creating a new pid')
         # parse post values back into a dictionary - each value is a list
         qs_opts = parse_qs(client.connection.postvalues)
         self.assertEqual(domain, qs_opts['domain'][0],
