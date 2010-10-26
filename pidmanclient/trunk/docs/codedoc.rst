@@ -9,3 +9,10 @@ clients.py
 
 .. automodule:: pidservices.clients
    :members:
+
+
+djangowrapper
+-------------
+
+.. automodule:: pidservices.djangowrapper.shortcuts
+   :members:

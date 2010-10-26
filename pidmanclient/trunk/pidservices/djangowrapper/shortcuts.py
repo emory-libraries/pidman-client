@@ -11,11 +11,11 @@ class DjangoPidmanRestClient(PidmanRestClient):
     information from the Django settings file instead of having to define it in
     the class call.
 
-    NOTE:  The following values **MUST** be added to your projects django
+    NOTE:  The following values **MUST** be added to your project's django
            settings.py file for this class to work properly.
 
-           * PIDMAN_HOST = '' # base url for the pidman server to query. i.e.
-             'http://pidman.library.emory.edu/' note the trailing shash.
+           * PIDMAN_HOST = '' # base url for the pidman server to query. e.g.,
+                ``http://pid.emory.edu/`` 
            * PIDMAN_USER = '' # Username for authentication to the pidman app.
            * PIDMAN_PASSWORD = '' # Pasword for username above.
            
