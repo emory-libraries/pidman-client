@@ -552,7 +552,7 @@ if __name__ == '__main__':
     try:
         # use xmlrunner when available for detailed error reports in hudson
         import xmlrunner
-        testRunner = xmlrunner.XMLTestRunner(output='test-results')
+        testrunner = xmlrunner.XMLTestRunner(output='test-results')
     except ImportError:
         pass
 
