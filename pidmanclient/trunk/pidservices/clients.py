@@ -271,11 +271,12 @@ class PidmanRestClient(object):
         """
         raise Exception("WHAT YOU TALKIN' 'BOUT WILLIS!?!?!  You can't delete domains.")
 
-    def search_pids(self, pid=None, type=None, target=None, domain=None, page=None, count=None):
+    def search_pids(self, pid=None, type=None, target=None, domain=None, domain_uri=None, page=None, count=None):
         """
         Queries the PID search api and returns the data results.
 
-        :param domain: Exact domain uri for pid
+        :param domain: Exact domain name for pid
+        :param domain_uri: URI of a domain.
         :param type: purl or ark
         :param pid: Exact pid value
         :param target: Exact target uri
