@@ -178,9 +178,11 @@ class PidmanRestClient(object):
         # set content type based on the data being sent (if any)
         # for current implementation, we can make the following assumptions:
         # - all POST methods are currently form-encoded key=>value data
-        headers["Content-type"] = "application/x-www-form-urlencoded"
+        if method == 'POST':
+            headers["Content-type"] = "application/x-www-form-urlencoded"
         # - all PUT methods currently use JSON-encoded data in request body
-        headers["Content-type"] = "application/json"
+        elif method == 'PUT':
+            headers["Content-type"] = "application/json"
         # - expect no body for GET and DELETE requests, so no content-type
 
         # expected result format

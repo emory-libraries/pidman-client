@@ -198,6 +198,9 @@ class PidmanRestClientTest(unittest.TestCase):
             'auth header is passed when creating a pid')
         self.assertEqual('text/plain', client.connection.headers['Accept'],
             'Accept header should be set to text/plain when creating a new pid')
+        self.assertEqual('application/x-www-form-urlencoded',
+            client.connection.headers['Content-type'],
+            'content-type should be form-encoded for POST data')
         # parse post values back into a dictionary - each value is a list
         qs_opts = parse_qs(client.connection.postvalues)
         self.assertEqual(domain, qs_opts['domain'][0],
@@ -354,6 +357,8 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual('PUT', client.connection.method)
         self.assert_('AUTHORIZATION' in client.connection.headers,
             'auth header is passed when updating a pid')
+        self.assertEqual('application/json', client.connection.headers['Content-type'],
+            'content-type should be JSON for PUT data')
         # request body is JSON-encoded update values
         opts = json.loads(client.connection.postvalues)
         self.assertEqual('new name', opts['name'],
