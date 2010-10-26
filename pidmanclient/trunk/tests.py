@@ -259,6 +259,9 @@ class PidmanRestClientTest(unittest.TestCase):
 
         # 400 - bad request
         client.connection.response.status = 400
+        # when response has body text, should be included in error
+        # (can't figure out how to test this in python 2.6; use assertRaisesRegex in 2.7)
+        client.connection.response.data = 'Error: Could not resolve domain URI'
         self.assertRaises(urllib2.HTTPError, client.create_pid, 'ark', 'domain-2',
                           'http://pid.com/')
 

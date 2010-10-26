@@ -158,7 +158,11 @@ class PidmanRestClient(object):
         :param accept: expected/accepted content type in the response; defaults
             to application/json
 
-        :returns: :class:`httplib.HTTPResponse` response object
+        :returns: the content of the response, based on the specified accept
+            format: if accept is ``application/json``, loads the response as JSON
+            and returns the resulting object; if accept is ``text/plain``, returns
+            the body of the response.  Otherwise, returns the
+            :class:`httplib.HTTPResponse` response object.
         '''
         if requires_auth:
             # only include auth header when required
@@ -181,24 +185,34 @@ class PidmanRestClient(object):
 
         # expected result format
         headers['Accept'] = accept
-
-        # FIXME: ... any other headers that may vary?
         
         self.connection.request(method, url, body, headers)
         response = self.connection.getresponse()
 
         if response.status is not expected_response:
-            raise urllib2.HTTPError(url, response.status, response.reason, None, None)
-        
-        return response
+            # Some errors (e.g., bad request) include a more detailed error
+            # message in response body - if present, add to error message detail
+            text = response.read()
+            if text is not None and len(text):
+                detail = '%s: %s' % (response.reason, text)
+            else:
+                detail = response.reason
+            
+            raise urllib2.HTTPError(url, response.status, detail, None, None)
+
+        if accept == 'application/json':
+            return json.loads(response.read())
+        elif accept == 'text/plain':
+            return response.read()
+        else:
+            return response
 
     def list_domains(self):
         """
         Returns the default domain list from the rest server.
         """        
         url = '%s/domains/' % self.baseurl['path']
-        response = self._make_request(url)
-        return json.loads(response.read())
+        return self._make_request(url)
         
     def create_domain(self, name, policy=None, parent=None):
         """
@@ -218,9 +232,9 @@ class PidmanRestClient(object):
         domain = {'name': name, 'policy': policy, 'parent': parent}
         params = urllib.urlencode(domain)
         url = '%s/domains/' % self.baseurl['path']
-        response = self._make_request(url, 'POST', params, expected_response=201,
+        # returns a plain text response about success.
+        return self._make_request(url, 'POST', params, expected_response=201,
                             requires_auth=True, accept='text/plain')
-        return response.read() # Should be a text response about success.
 
     def request_domain(self, domain_id):
         """
@@ -230,8 +244,7 @@ class PidmanRestClient(object):
         
         """
         url = '%s/domains/%s/' % (self.baseurl['path'], urllib.quote(str(domain_id)))
-        response = self._make_request(url)
-        return json.loads(response.read())
+        return self._make_request(url)
 
     def update_domain(self, id, name=None, policy=None, parent=None):
         """
@@ -258,9 +271,8 @@ class PidmanRestClient(object):
         if not domain:
             raise urllib2.HTTPError(url, 412, "No data provided for a valid updated", body, None)
 
-        response = self._make_request(url, 'PUT', body, requires_auth=True)
         # If successful the view returns the object just updated.
-        return json.loads(response.read())
+        return self._make_request(url, 'PUT', body, requires_auth=True)
 
     def delete_domain(self, domain):
         """
@@ -295,8 +307,7 @@ class PidmanRestClient(object):
 
         querystring = urllib.urlencode(query)
         url = '%s/pids/?%s' % (self.baseurl['path'], querystring)
-        response = self._make_request(url)
-        return json.loads(response.read())
+        return self._make_request(url)
 
     def create_pid(self, type, domain, target_uri, name=None, external_system=None,
                 external_system_key=None, policy=None, proxy=None,
@@ -336,9 +347,9 @@ class PidmanRestClient(object):
             pid_opts['qualifier'] = qualifier
 
         data = urllib.urlencode(pid_opts)
-        response = self._make_request(url, 'POST', data, expected_response=201,
+        # on success, returns new purl or ark in resolvable form as plain text
+        return self._make_request(url, 'POST', data, expected_response=201,
                             requires_auth=True, accept='text/plain')
-        return response.read() # Should be new purl or ark (resolvable form)
 
     def create_purl(self, *args, **kwargs):
          '''Convenience method to create a new PURL.  See :meth:`create_pid` for
@@ -359,8 +370,7 @@ class PidmanRestClient(object):
         """
         # rest url for accessing the requested pid
         url = self._pid_url(type, noid)       # also checks pid type
-        response = self._make_request(url)
-        return json.loads(response.read())
+        return self._make_request(url)
 
     def get_purl(self, noid):
          '''Convenience method to access information about a purl.  See
@@ -383,8 +393,7 @@ class PidmanRestClient(object):
         '''
         # generate target url and check pid type
         url = self._target_url(type, noid, qualifier)
-        response = self._make_request(url)
-        return json.loads(response.read())
+        return self._make_request(url)
 
     def get_purl_target(self, noid):
         'Convenience method to retrieve information about a purl target.'
@@ -430,9 +439,8 @@ class PidmanRestClient(object):
 
         # Setup the data to pass in the request.
         data = json.dumps(pid_info)
-        response = self._make_request(url, 'PUT', data, requires_auth=True)
         # If successful the view returns the object just updated.
-        return json.loads(response.read())
+        return self._make_request(url, 'PUT', data, requires_auth=True)
 
     def update_purl(self, *args, **kwargs):
          '''Convenience method to update an existing purl.  See :meth:`update_pid`
@@ -478,8 +486,7 @@ class PidmanRestClient(object):
 
         # Setup the data to pass in the request.
         data = json.dumps(target_info)
-        response = self._make_request(url, 'PUT', data, requires_auth=True)
-        return json.loads(response.read())
+        return self._make_request(url, 'PUT', data, requires_auth=True)
 
 
     def update_purl_target(self, noid, *args, **kwargs):
@@ -504,6 +511,6 @@ class PidmanRestClient(object):
         type = 'ark'
         # generate target url and check pid type
         url = self._target_url(type, noid, qualifier)
-        self._make_request(url, 'DELETE', requires_auth=True)
+        self._make_request(url, 'DELETE', requires_auth=True, accept='text/plain')
         # no processing to do with the response - if status code was 200, success
         return True
