@@ -548,5 +548,13 @@ def suite():
 
 if __name__ == '__main__':
     # Setup our test suite
-    runner = unittest.TextTestRunner(verbosity=2)
-    runner.run(suite())
+    testrunner = unittest.TextTestRunner(verbosity=2)
+    try:
+        # use xmlrunner when available for detailed error reports in hudson
+        import xmlrunner
+        testRunner = xmlrunner.XMLTestRunner(output='test-results')
+    except ImportError:
+        pass
+
+    testrunner.run(suite())
+
