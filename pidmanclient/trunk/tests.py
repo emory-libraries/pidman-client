@@ -18,7 +18,7 @@ settings.configure(
             PIDMAN_PASSWORD = 'testpass',
 )
 
-from pidservices.clients import PidmanRestClient
+from pidservices.clients import PidmanRestClient, is_ark, parse_ark
 from pidservices.djangowrapper.shortcuts import DjangoPidmanRestClient
 
 # Mock httplib so we don't need an actual server to test against.
@@ -536,6 +536,78 @@ class DjangoPidmanRestClientTest(unittest.TestCase):
         del settings.PIDMAN_HOST
         self.assertRaises(RuntimeError, DjangoPidmanRestClient)
 
+
+
+class IsArkTest(unittest.TestCase):
+
+    def test_is_ark(self):
+        'Test is_ark method'
+        # resolvable ark
+        self.assertTrue(is_ark('http://pid.emory.edu/ark:/25593/1fx'))
+        # resolvable arks with qualifier
+        self.assertTrue(is_ark('http://pid.emory.edu/ark:/25593/1fx/qual'))
+        self.assertTrue(is_ark('http://pid.emory.edu/ark:/25593/1fx/qual/1.23/foo-bar'))
+        # resolvable ark with base path in url
+        self.assertTrue(is_ark('http://test.site.com/pidman/ark:/25593/1fx/qual'))
+
+        # short-form ark
+        self.assertTrue(is_ark('ark:/25593/1fx'))
+        # short-form arks with qualifier
+        self.assertTrue(is_ark('ark:/25593/1fx/qual'))
+        self.assertTrue(is_ark('ark:/25593/1fx/qual/1.23/foo-bar'))
+
+        # non-arks
+        self.assertFalse(is_ark('http://pid.emory.edu/'))
+        self.assertFalse(is_ark('http://genes.is/noahs/ark'))
+        self.assertFalse(is_ark('http://pid.emory.edu/'))
+        self.assertFalse(is_ark('http://genes.is/noahs/ark'))
+        self.assertFalse(is_ark('doi:10.1000/182'))
+
+class ParseArkTest(unittest.TestCase):
+    def test_parse_ark(self):
+        'Test parse_ark method'
+
+        # use these strings to construct various versions of valid arks
+        # and confirm they are returned properly from the parse_ark method
+        ark_parts = {
+            'nma': 'http://pid.emory.edu/',
+            'naan': '25593',
+            'noid': '1fx',
+            'qual': 'qual/1.23/foo-bar.baz'
+        }
+
+        # unqualified resolvable ark
+        parsed_ark = parse_ark('%(nma)sark:/%(naan)s/%(noid)s' % ark_parts)
+        self.assertEqual(ark_parts['nma'], parsed_ark['nma'])
+        self.assertEqual(ark_parts['naan'], parsed_ark['naan'])
+        self.assertEqual(ark_parts['noid'], parsed_ark['noid'])
+        self.assertEqual(None, parsed_ark['qualifier'])     # not present
+
+        # qualified resolvable ark
+        parsed_ark = parse_ark('%(nma)sark:/%(naan)s/%(noid)s/%(qual)s' % ark_parts)
+        self.assertEqual(ark_parts['nma'], parsed_ark['nma'])
+        self.assertEqual(ark_parts['naan'], parsed_ark['naan'])
+        self.assertEqual(ark_parts['noid'], parsed_ark['noid'])
+        self.assertEqual(ark_parts['qual'], parsed_ark['qualifier'])  
+
+        # short-form ark
+        parsed_ark = parse_ark('ark:/%(naan)s/%(noid)s' % ark_parts)
+        self.assertEqual(None, parsed_ark['nma'])   # not present
+        self.assertEqual(ark_parts['naan'], parsed_ark['naan'])
+        self.assertEqual(ark_parts['noid'], parsed_ark['noid'])
+        self.assertEqual(None, parsed_ark['qualifier'])
+
+        # short-form ark with qualifier
+        parsed_ark = parse_ark('ark:/%(naan)s/%(noid)s/%(qual)s' % ark_parts)
+        self.assertEqual(None, parsed_ark['nma'])   # not present
+        self.assertEqual(ark_parts['naan'], parsed_ark['naan'])
+        self.assertEqual(ark_parts['noid'], parsed_ark['noid'])
+        self.assertEqual(ark_parts['qual'], parsed_ark['qualifier'])
+
+        # non-arks
+        self.assertEqual(None, parse_ark('doi:10.1000/182'),
+            'attempting to parse non-ark results in None')
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(PidmanRestClientTest("test_search_pids"))
@@ -552,6 +624,8 @@ def suite():
     suite.addTest(PidmanRestClientTest("test_delete_target"))
     suite.addTest(DjangoPidmanRestClientTest("test_constructor"))
     suite.addTest(DjangoPidmanRestClientTest("test_runtime_error"))
+    suite.addTest(IsArkTest("test_is_ark"))
+    suite.addTest(ParseArkTest("test_parse_ark"))
     return suite
 
 if __name__ == '__main__':

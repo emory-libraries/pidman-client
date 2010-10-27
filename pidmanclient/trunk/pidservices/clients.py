@@ -12,9 +12,42 @@ TODO: Test this note out to see what it gets us.
 import base64
 import httplib
 import json
+import re
 import urllib
 import urllib2
 from urlparse import urlparse
+
+# characters expected to be present in NOID portion of ARKs and PURLs (noid template .zek)
+NOID_CHARACTERS = '0123456789bcdfghjkmnpqrstvwxz'
+ARK_REGEXP = re.compile('^(?P<nma>https?://[a-z./]+/)?ark:/(?P<naan>[0-9]+)/(?P<noid>[%s]+)(?:/(?P<qualifier>.*))?$' % \
+    NOID_CHARACTERS, re.IGNORECASE)
+
+def is_ark(str):
+    '''Check if a string matches a regular expression for an ARK, in either
+    resolvable url form or short-form id, with or without qualifiers.
+
+    :param str: string to check
+    :returns: :class:`re.MatchObject` or None (can be treated as a boolean)
+    '''
+    return ARK_REGEXP.match(str)
+
+def parse_ark(ark):
+    '''Parse an ARK into its component parts.  Uses the same regular expression
+    as :meth:`~pidservices.clients.is_ark`; matches both short and resolvable
+    ARKs, with and without qualifiers.
+
+    :param ark: ARK string to parse
+    :returns: dictionary with parsed ARK information or None if the regular
+        expression does not match.  Dictionary keys in the return:
+        
+        - **nma** - Name Mapping Authority (base url portion of resolvable ark)
+        - **naan** - Name Assigning Authority Number
+        - **noid** - Nice Opaque Identifier
+        - **qualifier** - qualifier 
+    '''
+    matches = is_ark(ark)
+    if matches is not None:
+        return matches.groupdict()
 
 class PidmanRestClient(object):
     """

@@ -16,3 +16,11 @@ djangowrapper
 
 .. automodule:: pidservices.djangowrapper.shortcuts
    :members:
+
+
+other methods
+-------------
+
+ .. automethod:: pidservices.clients.is_ark
+
+ .. automethod:: pidservices.clients.parse_ark
