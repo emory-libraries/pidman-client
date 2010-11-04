@@ -236,7 +236,11 @@ class PidmanRestClientTest(unittest.TestCase):
             'unspecified parameter (proxy) not set in posted values')
         self.assert_('qualifier' not in qs_opts,
             'unspecified parameter (qualifier) not set in posted values')
-        
+
+        # handle unicode characters in pid titles
+        created = client.create_pid('purl', domain, target, u'unicode \u2026 in title')
+        self.assert_(created, 'craete_pid succeeds when title contains non-ascii unicode')
+
         # all parameters
         name, ext_sys, ext_id, qual = 'my new pid', 'EUCLID', 'ocm1234', 'q'
         policy, proxy = 'Not Guaranteed', 'EZProxy'

@@ -49,6 +49,11 @@ def parse_ark(ark):
     if matches is not None:
         return matches.groupdict()
 
+def unicode_urlencode(params):
+    # encode unicode strings so that urlencode can handle them correctly
+    return urllib.urlencode(dict([k, v.encode('utf-8') if hasattr(v, 'encode') else v]
+                                  for k, v in params.items()))
+
 class PidmanRestClient(object):
     """
     Provides minimal REST client support for the pidmanager REST API.  See
@@ -59,7 +64,7 @@ class PidmanRestClient(object):
     for a user with appropriate permissions.  API calls are made using Basic
     Authorization, which base64 encodes username and password.  It is recommended
     to use HTTPS for any REST API calls that require credentials.
-
+    
     :param baseurl: base url of the api for the pidman REST service., e.g.
                     ``http://my.domain.com/pidserver``
     :param username: optional username for REST API access
@@ -254,7 +259,7 @@ class PidmanRestClient(object):
         Creates a POST request to the rest api with attributes to create
         a new domain.
 
-        :param name: label or title for the new  Domain
+        :param name: label or title for the new Domain (unicode)
         :param policy: policy title
         :param parent: parent uri
         
@@ -265,7 +270,7 @@ class PidmanRestClient(object):
 
         # build the request.
         domain = {'name': name, 'policy': policy, 'parent': parent}
-        params = urllib.urlencode(domain)
+        params = unicode_urlencode(domain)
         url = '%s/domains/' % self.baseurl['path']
         # returns a plain text response about success.
         return self._make_request(url, 'POST', params, expected_response=201,
@@ -340,7 +345,7 @@ class PidmanRestClient(object):
             if value:
                 query[key] = value
 
-        querystring = urllib.urlencode(query)
+        querystring = unicode_urlencode(query)
         url = '%s/pids/?%s' % (self.baseurl['path'], querystring)
         return self._make_request(url)
 
@@ -354,7 +359,7 @@ class PidmanRestClient(object):
         :param type: type of pid to create (purl or ark)
         :param domain: Domain new pid should belong to (specify by REST resource URI)
         :param target_uri: URI the pid target should resolve to
-        :param name: name or identifier for the pid
+        :param name: name or identifier for the pid (unicode)
         :param external_system: external system name
         :param external_system_id: pid identifier in specified external system
         :param policy: policy title
@@ -381,7 +386,7 @@ class PidmanRestClient(object):
         if qualifier is not None:
             pid_opts['qualifier'] = qualifier
 
-        data = urllib.urlencode(pid_opts)
+        data = unicode_urlencode(pid_opts)
         # on success, returns new purl or ark in resolvable form as plain text
         return self._make_request(url, 'POST', data, expected_response=201,
                             requires_auth=True, accept='text/plain')
