@@ -5,6 +5,7 @@
 
 """
 
+import httplib
 import json
 import unittest
 import urllib2
@@ -103,6 +104,21 @@ class PidmanRestClientTest(unittest.TestCase):
             '/pidman', 
             'Path not correctly set when baseurl specified with trailing slash')
 
+    def test_connection(self):
+        'Test that client initializes correct type of http connection for ssl/non-ssl'
+        client = PidmanRestClient('http://pid.com/')
+        connection = client._get_connection()
+        self.assert_(isinstance(connection, httplib.HTTPConnection))
+        self.assertFalse(isinstance(connection, httplib.HTTPSConnection))
+
+        client = PidmanRestClient('https://pid.com/')
+        connection = client._get_connection()
+        self.assert_(isinstance(connection, httplib.HTTPSConnection))
+
+        client = PidmanRestClient('https://pid.com:8000/')
+        connection = client._get_connection()
+        self.assert_(isinstance(connection, httplib.HTTPSConnection))
+    
     def test_search_pids(self):
         """Tests the REST return for searching pids."""
         # Be a normal return.
@@ -610,22 +626,17 @@ class ParseArkTest(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(PidmanRestClientTest("test_search_pids"))
-    suite.addTest(PidmanRestClientTest("test_constructor"))
-    suite.addTest(PidmanRestClientTest("test_list_domains"))
-    suite.addTest(PidmanRestClientTest("test_create_domain"))
-    suite.addTest(PidmanRestClientTest("test_request_domain"))
-    suite.addTest(PidmanRestClientTest("test_update_domain"))
-    suite.addTest(PidmanRestClientTest("test_create_pid"))
-    suite.addTest(PidmanRestClientTest("test_get_pid"))
-    suite.addTest(PidmanRestClientTest("test_get_target"))
-    suite.addTest(PidmanRestClientTest("test_update_pid"))
-    suite.addTest(PidmanRestClientTest("test_update_target"))
-    suite.addTest(PidmanRestClientTest("test_delete_target"))
-    suite.addTest(DjangoPidmanRestClientTest("test_constructor"))
-    suite.addTest(DjangoPidmanRestClientTest("test_runtime_error"))
-    suite.addTest(IsArkTest("test_is_ark"))
-    suite.addTest(ParseArkTest("test_parse_ark"))
+    loader = unittest.TestLoader()
+    
+    test_cases = (
+        PidmanRestClientTest,
+        DjangoPidmanRestClientTest,
+        IsArkTest,
+        ParseArkTest,
+    )
+    for test_case in test_cases:
+        suite.addTests(loader.loadTestsFromTestCase(test_case))
+        
     return suite
 
 if __name__ == '__main__':

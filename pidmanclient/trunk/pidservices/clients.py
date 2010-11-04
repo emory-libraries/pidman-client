@@ -116,7 +116,7 @@ class PidmanRestClient(object):
         baseurl.scheme value.
 
         """
-        if self.baseurl['scheme'] is 'https':
+        if self.baseurl['scheme'] == 'https':
             return httplib.HTTPSConnection(self.baseurl['host'])
         return httplib.HTTPConnection(self.baseurl['host'])
     
@@ -220,7 +220,7 @@ class PidmanRestClient(object):
 
         # expected result format
         headers['Accept'] = accept
-        
+
         self.connection.request(method, url, body, headers)
         response = self.connection.getresponse()
 
@@ -232,7 +232,7 @@ class PidmanRestClient(object):
                 detail = '%s: %s' % (response.reason, text)
             else:
                 detail = response.reason
-            
+
             raise urllib2.HTTPError(url, response.status, detail, None, None)
 
         if accept == 'application/json':
