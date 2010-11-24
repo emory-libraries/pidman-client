@@ -4,9 +4,6 @@ obvious."* - **Karl Bismark**
 
 Module contains classes that build clients to interact with the Pidman Application
 via services.
-
-TODO: Test this note out to see what it gets us.
-
 '''
 
 import base64
@@ -176,7 +173,7 @@ class PidmanRestClient(object):
             'qualifier': qualifier,
         }
 
-    def _make_request(self, url, method='GET', body=None, expected_response=200,
+    def _make_request(self, url, method='GET', body=None, expected_response=[200],
         requires_auth=False, accept="application/json"):
         ''' Make an API request.  Common functionality for making http requests
         and simple error handling.  Defaults are set so that simple access
@@ -190,7 +187,8 @@ class PidmanRestClient(object):
         :param method: http method to use when making the request; default is GET
         :param body: data to send in request body, if any (optional)
         :param expected_response: expected http status code on the returned
-            response; if the response does not match, an error is raised
+            response; if the response does not match, an error is raised - can be
+            either a single status code, or a list of valid codes; defaults to 200
         :param requires_auth: boolean, defaults to False; when True, authorization
             headers will be included in the request
         :param accept: expected/accepted content type in the response; defaults
@@ -228,8 +226,14 @@ class PidmanRestClient(object):
 
         self.connection.request(method, url, body, headers)
         response = self.connection.getresponse()
+        # NOTE: occasionally getting an httplib.BadStatusLine error after runnning
+        # few requests in python shell; possibly happening after a certain
+        # time-delay, but unclear if this is a concern for real uses.
 
-        if response.status is not expected_response:
+        if not isinstance(expected_response, list):
+            expected_response = [expected_response]
+
+        if response.status not in expected_response:
             # Some errors (e.g., bad request) include a more detailed error
             # message in response body - if present, add to error message detail
             text = response.read()
@@ -269,10 +273,15 @@ class PidmanRestClient(object):
             raise Exception('Name value cannot be None or empty!')
 
         # build the request.
-        domain = {'name': name, 'policy': policy, 'parent': parent}
+        domain = {'name': name}
+        # parent & policy are optional; only include in the request if specified
+        if policy is not None:
+         domain['policy'] = policy
+        if parent is not None:
+          domain['parent'] =  parent
         params = unicode_urlencode(domain)
         url = '%s/domains/' % self.baseurl['path']
-        # returns a plain text response about success.
+        # returns the URI for the newly-created domain on success
         return self._make_request(url, 'POST', params, expected_response=201,
                             requires_auth=True, accept='text/plain')
 
@@ -524,9 +533,16 @@ class PidmanRestClient(object):
         if not target_info:
             raise Exception("No update data specified!")
 
+        # for ARK, either 200 or 201 is valid (could actually create a new qualifier here)
+        if type == 'ark':
+            success_code = [201, 200]
+        else:
+            success_code = 200
+
         # Setup the data to pass in the request.
         data = json.dumps(target_info)
-        return self._make_request(url, 'PUT', data, requires_auth=True)
+        return self._make_request(url, 'PUT', data, expected_response=success_code,
+                                  requires_auth=True)
 
 
     def update_purl_target(self, noid, *args, **kwargs):

@@ -507,6 +507,13 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(expected, got,
             'update_ark_target requests expected url; expected %s, got %s' % (expected, got))
         self.assertEqual('PUT', client.connection.method)
+        # can actually create a *new* ark target using update - returns 201
+        client.connection.response.status = 201
+        client.update_ark_target('bb', 'NEW-qual', target_uri=target)
+        expected, got = '/pidman/ark/bb/NEW-qual', client.connection.url
+        self.assertEqual(expected, got,
+            'update_ark_target requests expected url; expected %s, got %s' % (expected, got))
+        self.assertEqual('PUT', client.connection.method)
 
         # 404 - target not found
         client.connection.response.status = 404
