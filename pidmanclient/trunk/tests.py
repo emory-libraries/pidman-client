@@ -164,11 +164,11 @@ class PidmanRestClientTest(unittest.TestCase):
         bad_client = self._new_client()
         self.assertRaises(Exception, bad_client.create_domain, None)
 
-    def test_request_domain(self):
+    def test_get_domain(self):
         """Tests the request and return of a single domain."""
         client = self._new_client()
         client.connection.response.data = '[{"id": 25, "name": "domain name"}]'
-        domain = client.request_domain(25)
+        domain = client.get_domain(25)
         self.assertEqual(25, domain[0]['id'])
         self.assert_('AUTHORIZATION' not in client.connection.headers,
             'auth header is not passed when accessing a single domain')

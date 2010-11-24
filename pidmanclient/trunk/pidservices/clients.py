@@ -285,7 +285,7 @@ class PidmanRestClient(object):
         return self._make_request(url, 'POST', params, expected_response=201,
                             requires_auth=True, accept='text/plain')
 
-    def request_domain(self, domain_id):
+    def get_domain(self, domain_id):
         """
         Requests a domain by id.
 
@@ -322,15 +322,6 @@ class PidmanRestClient(object):
 
         # If successful the view returns the object just updated.
         return self._make_request(url, 'PUT', body, requires_auth=True)
-
-    def delete_domain(self, domain):
-        """
-        You can't delete domains, don't even try.
-
-        :param domain: Any value of a domain, it doesn't matter.  I wont let you
-                       delete it anyway.
-        """
-        raise Exception("WHAT YOU TALKIN' 'BOUT WILLIS!?!?!  You can't delete domains.")
 
     def search_pids(self, pid=None, type=None, target=None, domain=None, domain_uri=None, page=None, count=None):
         """
