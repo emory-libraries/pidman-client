@@ -1,0 +1,17 @@
+UPGRADE NOTES
+=================
+
+Version 1.1.0
+-----------
+* Fedora 3.4 upgrade:
+  Run the migration script migrate_lsdi_arks.py to update the arks in the 
+  pid_target table 'uri' field with the new fedora 3.4 REST format.
+  Usage: migrate_lsdi_arks.py  <old_base_url> <new_base_url> <pid username> 
+            <pid password> <pid manager url>.
+  Example: migrate_lsdi_arks.py "https://dev11.library.emory.edu:8443" 
+          "https://dev11.library.emory.edu:8943" 
+          "username" 
+          "password" 
+          "https://testpid.library.emory.edu/"
+  
+
