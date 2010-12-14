@@ -11,7 +11,7 @@ another."*
 __author__ = "Emory Libraries Software Team"
 __copyright__ = "Copyright 2010, Emory University General Library"
 __credits__ = ["Scott Turnbull","Rebecca Koeser", "Alex Thomas"]
-__email__ = "libsys-dev@listserv.cc.emory.edu"
+__email__ = "libsysdev-l@listserv.cc.emory.edu"
 
 # Version Info, parsed below for actual version number.
 __version_info__ = (1, 0, 0, 'dev')
