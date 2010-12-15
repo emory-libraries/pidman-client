@@ -9,10 +9,13 @@ via services.
 import base64
 import httplib
 import json
+import logging
 import re
 import urllib
 import urllib2
 from urlparse import urlparse
+
+logger = logging.getLogger(__name__)
 
 # characters expected to be present in NOID portion of ARKs and PURLs (noid template .zek)
 NOID_CHARACTERS = '0123456789bcdfghjkmnpqrstvwxz'
@@ -224,6 +227,7 @@ class PidmanRestClient(object):
         # expected result format
         headers['Accept'] = accept
 
+        logging.debug('Request: %s %s %s <![BODY[%s]]>' % (method, url, headers, body))
         self.connection.request(method, url, body, headers)
         response = self.connection.getresponse()
         # NOTE: occasionally getting an httplib.BadStatusLine error after runnning
