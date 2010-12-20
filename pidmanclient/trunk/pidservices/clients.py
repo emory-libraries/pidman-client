@@ -227,7 +227,7 @@ class PidmanRestClient(object):
         # expected result format
         headers['Accept'] = accept
 
-        logging.debug('Request: %s %s %s <![BODY[%s]]>' % (method, url, headers, body))
+        logger.debug('Request: %s %s %s <![BODY[%s]]>' % (method, url, headers, body))
         self.connection.request(method, url, body, headers)
         response = self.connection.getresponse()
         # NOTE: occasionally getting an httplib.BadStatusLine error after runnning
