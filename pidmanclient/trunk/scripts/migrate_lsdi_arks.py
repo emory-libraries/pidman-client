@@ -114,7 +114,11 @@ def process_page(page, results):
             new_target_uri = new_fedora_base + "/fedora/objects/" + n[3]
             target_result = client.update_ark_target(noid, target_uri=new_target_uri)
           elif (len(n) == 5): # Datastream REST format
-            new_target_uri = new_fedora_base + "/fedora/objects/" + n[3] + "/datastreams/" + n[4] + "/content"  
+            new_target_uri = new_fedora_base + "/fedora/objects/" + n[3] + "/datastreams/" + n[4] + "/content"
+            if(n[4] == "PDF")
+            {
+            	new_target_uri = new_target_uri + "?download=true"
+            }  
             target_result = client.update_ark_target(noid, qualifier=n[4], target_uri=new_target_uri)
 
           updatedcount = updatedcount + 1 # Keep count of the database updates that were made.
