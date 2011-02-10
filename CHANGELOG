@@ -3,10 +3,6 @@ Version Information
 
 Below is a summary of changes to the application.
 
-1.1.0
------
-* Added a script (migrate_lsdi_arks.py) to migrate LSDI ark to fedora 3.4 format.
-
 1.0.0
 -----
 Initial release of basic client with minimal functionality that allows it to
