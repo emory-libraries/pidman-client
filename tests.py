@@ -164,11 +164,11 @@ class PidmanRestClientTest(unittest.TestCase):
         bad_client = self._new_client()
         self.assertRaises(Exception, bad_client.create_domain, None)
 
-    def test_get_domain(self):
+    def test_request_domain(self):
         """Tests the request and return of a single domain."""
         client = self._new_client()
         client.connection.response.data = '[{"id": 25, "name": "domain name"}]'
-        domain = client.get_domain(25)
+        domain = client.request_domain(25)
         self.assertEqual(25, domain[0]['id'])
         self.assert_('AUTHORIZATION' not in client.connection.headers,
             'auth header is not passed when accessing a single domain')
@@ -504,13 +504,6 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual('PUT', client.connection.method)
         client.update_ark_target('bb', 'PDF', target_uri=target, proxy=proxy)
         expected, got = '/pidman/ark/bb/PDF', client.connection.url
-        self.assertEqual(expected, got,
-            'update_ark_target requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
-        # can actually create a *new* ark target using update - returns 201
-        client.connection.response.status = 201
-        client.update_ark_target('bb', 'NEW-qual', target_uri=target)
-        expected, got = '/pidman/ark/bb/NEW-qual', client.connection.url
         self.assertEqual(expected, got,
             'update_ark_target requests expected url; expected %s, got %s' % (expected, got))
         self.assertEqual('PUT', client.connection.method)
