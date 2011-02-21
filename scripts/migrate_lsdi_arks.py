@@ -110,7 +110,7 @@ def process_page(page, results):
         old_url = tup[0] + "://" + tup[1]
         noid = item['pid']        
         if (old_url == old_fedora_base):  # only update the domain specified in the args 
-          if (len(n) == 4 or (len(n) == 5 and n[4] == '')): # top level object REST format
+          if (len(n) == 4 or (len(n) == 5 and len(n[4]) <= 1)): # top level object REST format
             new_target_uri = new_fedora_base + "/fedora/objects/" + n[3]
             target_result = client.update_ark_target(noid, target_uri=new_target_uri)
           elif (len(n) == 5): # Datastream REST format
