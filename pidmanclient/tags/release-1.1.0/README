@@ -1,0 +1,13 @@
+Overview
+========
+
+Pidman Services provides a central library of services for external applications
+to interact with the Pid Manager application.
+
+Components
+----------
+
+**Rest API Services**
+
+:class:`PidmanRestClient` provides basic interaction with the Pidman Rest API
+wrapped in python methods.
