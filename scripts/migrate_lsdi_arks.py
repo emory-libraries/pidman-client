@@ -102,9 +102,7 @@ def process_page(page, results):
       target_uri = tg['target_uri'] 
         
       if (target_uri.find("fedora")>0):
-        tup = urlparse.urlparse(target_uri)      
-        m = re.search('(.*):[0-9]+$', tup[1])
-        url = m.group(1); # extract the domain without the port         
+        tup = urlparse.urlparse(target_uri)             
         m = re.search('fedora/get/(^/$)/?', tup[2])
         n = tup[2].split("/")
         old_url = tup[0] + "://" + tup[1]
