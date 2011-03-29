@@ -136,8 +136,6 @@ def validate(old_fedora_base, new_fedora_base):
     show_error('Error: second argument <new_base_url> must begin with "http"')
   elif (port_check.match(old_fedora_base) is None):
     show_error('Error: first argument <old_base_url> must end with port number')
-  elif (port_check.match(new_fedora_base) is None):
-    show_error('Error: second argument <new_base_url> must end with port number')   
   
 def show_error(err):
   print err
