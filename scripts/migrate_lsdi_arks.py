@@ -66,7 +66,7 @@ def main():
   
   current_page = 1
   count = 0
-  max = 500
+  max = 220000
     
   # search for existing arks by domain where type='ark', domain='LSDI'
   search_results = client.search_pids(type='ark', domain='LSDI', count=max)
@@ -102,9 +102,7 @@ def process_page(page, results):
       target_uri = tg['target_uri'] 
         
       if (target_uri.find("fedora")>0):
-        tup = urlparse.urlparse(target_uri)      
-        m = re.search('(.*):[0-9]+$', tup[1])
-        url = m.group(1); # extract the domain without the port         
+        tup = urlparse.urlparse(target_uri)             
         m = re.search('fedora/get/(^/$)/?', tup[2])
         n = tup[2].split("/")
         old_url = tup[0] + "://" + tup[1]
@@ -136,8 +134,6 @@ def validate(old_fedora_base, new_fedora_base):
     show_error('Error: second argument <new_base_url> must begin with "http"')
   elif (port_check.match(old_fedora_base) is None):
     show_error('Error: first argument <old_base_url> must end with port number')
-  elif (port_check.match(new_fedora_base) is None):
-    show_error('Error: second argument <new_base_url> must end with port number')   
   
 def show_error(err):
   print err
