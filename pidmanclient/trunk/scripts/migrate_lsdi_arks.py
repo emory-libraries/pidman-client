@@ -66,7 +66,7 @@ def main():
   
   current_page = 1
   count = 0
-  max = 500
+  max = 220000
     
   # search for existing arks by domain where type='ark', domain='LSDI'
   search_results = client.search_pids(type='ark', domain='LSDI', count=max)
