@@ -88,6 +88,10 @@ class PidmanRestClient(object):
     # pattern for generating REST api url for target access/update/delete
     _rest_target_uri = '%(base_url)s/%(type)s/%(noid)s/%(qualifier)s'
 
+    #This token is used when creating arks for targets.
+    #The portion of the url that contains this token should be replaced with a noid
+    pid_token = '{%PID%}'
+
     def __init__(self, url, username="", password=""):
         self._set_baseurl(url)        
         self._set_auth_token(username, password)
