@@ -251,12 +251,16 @@ class PidmanRestClient(object):
                 detail = response.reason
 
             raise urllib2.HTTPError(url, response.status, detail, None, None)
-
         if accept == 'application/json':
-            return json.loads(response.read())
+            response = json.loads(response.read())
+            self.connection.close()
+            return response
         elif accept == 'text/plain':
-            return response.read()
+            response = response.read()
+            self.connection.close()
+            return response
         else:
+            self.connection.close()
             return response
 
     def list_domains(self):
