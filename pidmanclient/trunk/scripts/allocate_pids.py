@@ -1,0 +1,210 @@
+#!/usr/bin/env python
+
+'''
+Script to allocate a batch of pids with default values to allow assigning unique
+identifiers to content being created offline or by external systems.
+
+Recommended usage:
+
+
+
+
+'''
+import argparse
+import ConfigParser
+from getpass import getpass
+import sys
+import urlparse
+
+from pidservices.clients import PidmanRestClient
+
+class AllocatePids(object):
+    parser = None
+    args = None
+
+    def config_arg_parser(self):
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument('--quiet', '-q', default=False, action='store_true',
+                                 help='Quiet mode: only output summary report')
+        # config file options
+        cfg_args = self.parser.add_argument_group('Config file options')
+        cfg_args.add_argument('--generate-config', '-g', default=False, dest='gen_config',
+            help='''Create a sample config file at the specified location, including any options passed.
+            Specify the --fedora-password option to generate an encrypted password in the config file.''')
+        cfg_args.add_argument('--config', '-c', help='Load the specified config file')
+        # cfg_args.add_argument('--key', '-k',
+            # help='''Optional encryption key for encrypting and decrypting the password in the
+            # config file (you must use the same key for generating and loading)''')
+
+        # pidman connection options
+        pidman_args = self.parser.add_argument_group('Pid manager connection options')
+        pidman_args.add_argument('--pidman-url', dest='pidman_url',
+                               help='URL for accessing Pid Manager, e.g. http://pid.emory.edu/')
+        pidman_args.add_argument('--pidman-user', dest='pidman_user', default=None,
+                               help='PID Manager username')
+        pidman_args.add_argument('--pidman-password', dest='pidman_password', metavar='PASSWORD',
+                               default=None, action=PasswordAction,
+                               help='Password for the specified Pid Manager user (leave blank to be prompted)')
+
+        # options for pids to be allocated
+        pid_args = self.parser.add_argument_group('Pid options')
+        pid_args.add_argument('--max', '-m', type=int, metavar='N',
+            help='Number of pids to allocate')
+        pid_args.add_argument('--type', '-t', choices=['ARK', 'PURL'],
+            help='Type of pids to create (ARK or PURL)')
+        pid_args.add_argument('--name', '-n',
+            help='Default name to use when generating pids')
+        pid_args.add_argument('--target', '-u', dest='target_uri',
+            help='Default target URI to use when generating pids')
+        pid_args.add_argument('--domain', '-d',
+            help='Domain URI that generating pids should belong to')
+        # for now, does not support setting policy
+
+    def run(self):
+        self.config_arg_parser()
+        self.args = self.parser.parse_args()
+
+        # if requested, load config file and set arguments
+        if self.args.config:
+            self.load_configfile()
+
+        # if requested, generate a config file with any options specified so far,
+        # and then quit
+        if self.args.gen_config:
+            self.generate_configfile()
+            return
+
+        # check required/valid parameters
+        # - max required/integer
+        if not self.args.max:
+            print >> sys.stderr, 'Error: number of pids to allocate is required'
+            self.parser.print_usage()
+            return
+        try:
+            int(self.args.max)
+        except ValueError:
+            print >> sys.stderr, 'Error: number of pids to allocate must be an integer'
+            self.parser.print_usage()
+            return
+        # - type required, valid choice (if set via config)
+        if not self.args.type or self.args.type not in ['ARK', 'PURL']:
+            print >> sys.stderr, 'Error: type "%s" is not a valid choice' % self.args.type
+            self.parser.print_usage()
+            return
+
+        # - domain required, should be a uri (and existing pid domain?)
+        if not self.args.domain:
+            print >> sys.stderr, 'Error: domain is required'
+            self.parser.print_usage()
+            return
+        if not self.args.domain.startswith(self.args.pidman_url):
+            print >> sys.stderr, 'Error: domain should be a URI on configured Pid Manager site'
+            return
+
+        pidclient = PidmanRestClient(self.args.pidman_url, self.args.pidman_user,
+                                     self.args.pidman_password)
+        # check that domain is a valid pid man domain
+        domain_number = self.args.domain.rstrip('/').split('/')[-1]
+        try:
+            dom = pidclient.get_domain(domain_number)
+            if not self.args.quiet:
+                print >> sys.stderr, 'Pids will be created in domain %(name)s' % dom
+        except Exception:
+            print >> sys.stderr, 'Error retrieving domain information; please check configuration'
+
+        # now actually generate and output the pids
+        pid_count = 0
+        pid_max = int(self.args.max)
+        while True:
+            pid = pidclient.create_pid(self.args.type.lower(), self.args.domain,
+                self.args.target_uri, self.args.name)
+            print pid
+
+            pid_count += 1
+            if pid_count >= pid_max:
+                break
+
+        if not self.args.quiet:
+            print >> sys.stderr, 'Generated %d pids' % pid_count
+
+    ## config file handling (generate config, load config)
+
+    pidman_cfg = 'Pid Manager'
+    pid_cfg = 'Pid Options'
+
+    def setup_configparser(self):
+        # define a config file parser
+        config = ConfigParser.SafeConfigParser()
+        # fedora connection settings
+        config.add_section(self.pidman_cfg)
+        config.set(self.pidman_cfg, 'url',  str(self.args.pidman_url) if self.args.pidman_url else '')
+        config.set(self.pidman_cfg, 'username', str(self.args.pidman_user) if self.args.pidman_user else '')
+        # TODO: encryption on password
+        config.set(self.pidman_cfg, 'password', str(self.args.pidman_password) if self.args.pidman_password else '')
+        # processing options
+        config.add_section(self.pid_cfg)
+        config.set(self.pid_cfg, 'max', str(self.args.max) if self.args.max else '')
+        config.set(self.pid_cfg, 'type', str(self.args.type) if self.args.type else '')
+        config.set(self.pid_cfg, 'name', str(self.args.name) if self.args.name else '')
+        config.set(self.pid_cfg, 'target', str(self.args.target_uri) if self.args.target_uri else '')
+        config.set(self.pid_cfg, 'domain', str(self.args.domain) if self.args.domain else '')
+
+        return config
+
+    def generate_configfile(self):
+        config = self.setup_configparser()
+        with open(self.args.gen_config, 'w') as cfgfile:
+            config.write(cfgfile)
+        if not self.args.quiet:
+            print 'Config file created at %s' % self.args.gen_config
+
+    def load_configfile(self):
+        cfg = ConfigParser.SafeConfigParser()
+        with open(self.args.config) as cfgfile:
+            cfg.readfp(cfgfile)
+
+        # set args from config, making sure not to override any
+        # non-defaults sepcified on the command line
+
+        # - connection opts
+        if cfg.has_section(self.pidman_cfg):
+            if cfg.has_option(self.pidman_cfg, 'url') and \
+              not self.args.pidman_url:
+                self.args.pidman_url = cfg.get(self.pidman_cfg, 'url')
+            if cfg.has_option(self.pidman_cfg, 'username') and \
+              not self.args.pidman_user:
+                self.args.pidman_user = cfg.get(self.pidman_cfg, 'username')
+            if cfg.has_option(self.pidman_cfg, 'password') and \
+              not self.args.pidman_password:
+                self.args.pidman_password = cfg.get(self.pidman_cfg, 'password')
+                # self.args.fedora_password = cryptutil.decrypt(cfg.get(self.repo_cfg, 'fedora_password'))
+
+        # - pid opts
+        if cfg.has_section(self.pid_cfg):
+            if cfg.has_option(self.pid_cfg, 'max') and not self.args.max:
+                self.args.max = cfg.get(self.pid_cfg, 'max')
+            if cfg.has_option(self.pid_cfg, 'type') and not self.args.type:
+                self.args.type = cfg.get(self.pid_cfg, 'type')
+            if cfg.has_option(self.pid_cfg, 'name') and not self.args.name:
+                self.args.name = cfg.get(self.pid_cfg, 'name')
+            if cfg.has_option(self.pid_cfg, 'target') and not self.args.target_uri:
+                self.args.target_uri = cfg.get(self.pid_cfg, 'target')
+            if cfg.has_option(self.pid_cfg, 'domain') and not self.args.domain:
+                self.args.domain = cfg.get(self.pid_cfg, 'domain')
+
+
+class PasswordAction(argparse.Action):
+    '''Use :meth:`getpass.getpass` to prompt for a password for a
+    command-line argument.'''
+    def __call__(self, parser, namespace, value, option_string=None):
+        # if a value was specified on the command-line, use that
+        if value:
+            setattr(namespace, self.dest, value)
+        # otherwise, use getpass to prompt for a password
+        else:
+            setattr(namespace, self.dest, getpass())
+
+
+if __name__ == '__main__':
+    AllocatePids().run()
+
