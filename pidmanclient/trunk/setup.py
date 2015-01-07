@@ -7,4 +7,5 @@ setup(
     author=pidservices.__author__,
     author_email=pidservices.__email__,
     packages=['pidservices', 'pidservices.djangowrapper'],
+    scripts=['scripts/allocate_pids',],
 )
