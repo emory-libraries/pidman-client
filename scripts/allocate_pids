@@ -9,12 +9,13 @@ the number of options it is recommended to generate and use a config file.
 
 Generate a blank config file::
 
-    allocate_pids.py -g /path/to/configfile
+    allocate_pids -g /path/to/configfile
 
 Edit the config file with connection parameters and default values for the pids
-to be generated, and then run the script, supplying config file and password::
+to be generated, and then run the script, supplying config file and password,
+and redirecting standard output to a file to capture the pids that are created::
 
-   allocate_pids.py -c /path/to/configfile -p=
+   allocate_pids -c /path/to/configfile -p= > my_pids.txt
 
 '''
 import argparse
