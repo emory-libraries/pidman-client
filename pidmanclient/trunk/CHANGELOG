@@ -3,6 +3,10 @@ Version Information
 
 Below is a summary of changes to the application.
 
+1.2
+---
+* New script for allocating a block of pids at once: *allocate_pids*
+
 1.1.2
 -----
 * closed connection in _make_request
