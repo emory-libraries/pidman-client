@@ -4,10 +4,17 @@
 Script to allocate a batch of pids with default values to allow assigning unique
 identifiers to content being created offline or by external systems.
 
-Recommended usage:
+All configuration options are available via command-line flags, but because of
+the number of options it is recommended to generate and use a config file.
 
+Generate a blank config file::
 
+    allocate_pids.py -g /path/to/configfile
 
+Edit the config file with connection parameters and default values for the pids
+to be generated, and then run the script, supplying config file and password::
+
+   allocate_pids.py -c /path/to/configfile -p=
 
 '''
 import argparse
@@ -42,7 +49,7 @@ class AllocatePids(object):
                                help='URL for accessing Pid Manager, e.g. http://pid.emory.edu/')
         pidman_args.add_argument('--pidman-user', dest='pidman_user', default=None,
                                help='PID Manager username')
-        pidman_args.add_argument('--pidman-password', dest='pidman_password', metavar='PASSWORD',
+        pidman_args.add_argument('--pidman-password', '-p', dest='pidman_password', metavar='PASSWORD',
                                default=None, action=PasswordAction,
                                help='Password for the specified Pid Manager user (leave blank to be prompted)')
 
@@ -75,6 +82,12 @@ class AllocatePids(object):
             return
 
         # check required/valid parameters
+        # pidman connections
+        if not all([self.args.pidman_url, self.args.pidman_user, self.args.pidman_password]):
+            print >> sys.stderr, 'Error: PID manager connection settings are required'
+            self.parser.print_usage()
+            return
+
         # - max required/integer
         if not self.args.max:
             print >> sys.stderr, 'Error: number of pids to allocate is required'
@@ -116,8 +129,13 @@ class AllocatePids(object):
         pid_count = 0
         pid_max = int(self.args.max)
         while True:
-            pid = pidclient.create_pid(self.args.type.lower(), self.args.domain,
-                self.args.target_uri, self.args.name)
+            try:
+                pid = pidclient.create_pid(self.args.type.lower(), self.args.domain,
+                    self.args.target_uri, self.args.name)
+            except Exception as err:
+                print >> sys.stderr, 'Error generating pid (%s)' % err
+                break
+
             print pid
 
             pid_count += 1
@@ -139,8 +157,9 @@ class AllocatePids(object):
         config.add_section(self.pidman_cfg)
         config.set(self.pidman_cfg, 'url',  str(self.args.pidman_url) if self.args.pidman_url else '')
         config.set(self.pidman_cfg, 'username', str(self.args.pidman_user) if self.args.pidman_user else '')
-        # TODO: encryption on password
-        config.set(self.pidman_cfg, 'password', str(self.args.pidman_password) if self.args.pidman_password else '')
+        # NOTE: password not included to avoid storing in plain text or dealing with encryption
+        # config.set(self.pidman_cfg, 'password', str(self.args.pidman_password) if self.args.pidman_password else '')
+
         # processing options
         config.add_section(self.pid_cfg)
         config.set(self.pid_cfg, 'max', str(self.args.max) if self.args.max else '')
@@ -174,10 +193,10 @@ class AllocatePids(object):
             if cfg.has_option(self.pidman_cfg, 'username') and \
               not self.args.pidman_user:
                 self.args.pidman_user = cfg.get(self.pidman_cfg, 'username')
-            if cfg.has_option(self.pidman_cfg, 'password') and \
-              not self.args.pidman_password:
-                self.args.pidman_password = cfg.get(self.pidman_cfg, 'password')
-                # self.args.fedora_password = cryptutil.decrypt(cfg.get(self.repo_cfg, 'fedora_password'))
+            # NOTE: password not included to avoid storing in plain text
+            # if cfg.has_option(self.pidman_cfg, 'password') and \
+            #   not self.args.pidman_password:
+                # self.args.pidman_password = cfg.get(self.pidman_cfg, 'password')
 
         # - pid opts
         if cfg.has_section(self.pid_cfg):
