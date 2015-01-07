@@ -26,11 +26,13 @@ import urlparse
 from pidservices.clients import PidmanRestClient
 
 class AllocatePids(object):
+    '''Allocate a batch of pids with default values for use in an offline or
+    external system, with values to be updated later.'''
     parser = None
     args = None
 
     def config_arg_parser(self):
-        self.parser = argparse.ArgumentParser()
+        self.parser = argparse.ArgumentParser(description=self.__doc__)
         self.parser.add_argument('--quiet', '-q', default=False, action='store_true',
                                  help='Quiet mode: only output summary report')
         # config file options
