@@ -6,14 +6,14 @@ Module contains classes that build clients to interact with the Pidman Applicati
 via services.
 '''
 
-import base64
-import httplib
 import json
 import logging
 import re
 import urllib
-import urllib2
 from urlparse import urlparse
+import requests
+
+from pidservices import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -39,20 +39,16 @@ def parse_ark(ark):
     :param ark: ARK string to parse
     :returns: dictionary with parsed ARK information or None if the regular
         expression does not match.  Dictionary keys in the return:
-        
+
         - **nma** - Name Mapping Authority (base url portion of resolvable ark)
         - **naan** - Name Assigning Authority Number
         - **noid** - Nice Opaque Identifier
-        - **qualifier** - qualifier 
+        - **qualifier** - qualifier
     '''
     matches = is_ark(ark)
     if matches is not None:
         return matches.groupdict()
 
-def unicode_urlencode(params):
-    # encode unicode strings so that urlencode can handle them correctly
-    return urllib.urlencode(dict([k, v.encode('utf-8') if hasattr(v, 'encode') else v]
-                                  for k, v in params.items()))
 
 class PidmanRestClient(object):
     """
@@ -64,11 +60,11 @@ class PidmanRestClient(object):
     for a user with appropriate permissions.  API calls are made using Basic
     Authorization, which base64 encodes username and password.  It is recommended
     to use HTTPS for any REST API calls that require credentials.
-    
+
     :param baseurl: base url of the api for the pidman REST service., e.g.
                     ``http://my.domain.com/pidserver``
     :param username: optional username for REST API access
-    :param password: optional password 
+    :param password: optional password
 
     """
     baseurl = {
@@ -76,9 +72,11 @@ class PidmanRestClient(object):
         'host': None,
         'path': None,
     }
-
-    headers = {        
-        "User-Agent": "PidmanRestClient",       # TODO: can we include module version here?
+    _auth = None
+    headers = {
+        'User-Agent': 'PidmanRestClient/%s (python-requests/%s)' % \
+            (__version__, requests.__version__),
+        'verify': True # veryify SSL certs by default
     }
 
     pid_types = ['ark', 'purl']
@@ -88,17 +86,25 @@ class PidmanRestClient(object):
     # pattern for generating REST api url for target access/update/delete
     _rest_target_uri = '%(base_url)s/%(type)s/%(noid)s/%(qualifier)s'
 
-    #This token is used when creating arks for targets.
-    #The portion of the url that contains this token should be replaced with a noid
+    # This token is used when creating arks for targets.
+    # The portion of the url that contains this token should be replaced with a noid
     pid_token = '{%PID%}'
 
     def __init__(self, url, username="", password=""):
-        self._set_baseurl(url)        
-        self._set_auth_token(username, password)
-        # FIXME: should we generate an auth token when username & password are not
-        # specified? Credentials are required for create/delete/update methods...
-        # Seems weird to build an auth token for blank username, blank password
-        self.connection = self._get_connection()
+        self._set_baseurl(url)
+
+        # create a requests session to be used for all API calls
+        self.session = requests.Session()
+        # Set headers that should be passed with every request
+
+        self.session.headers = {
+            'User-Agent': 'pidmanclient/%s (python-requests/%s)' % \
+                (__version__, requests.__version__),
+            'verify': True,  # verify SSL certs by default
+        }
+        # store auth if credentials were specified
+        if username and password:
+            self._auth = (username, password)
 
     def _set_baseurl(self, url):
         """
@@ -119,30 +125,13 @@ class PidmanRestClient(object):
         """
         return '%s://%s%s' % (self.baseurl['scheme'], self.baseurl['host'], self.baseurl['path'])
 
-    def _get_connection(self):
+    def absolute_url(self, path):
         """
-        Constructs the proper httplib connection object based on the
-        baseurl.scheme value.
-
+        Prep an API URL for access based on base url.
         """
-        if self.baseurl['scheme'] == 'https':
-            return httplib.HTTPSConnection(self.baseurl['host'])
-        return httplib.HTTPConnection(self.baseurl['host'])
-    
-    def _secure_headers(self):
-        """Returns a copy of headers with the intent of using that as a
-        method variable so I'm not passing username and password by default.
-        It's private because... get your own darn secure heaeders ya hippie!
-        """
-        headers = self.headers.copy()
-        headers['AUTHORIZATION'] = self._auth_token
-        return headers
-
-    def _set_auth_token(self, username, password):
-        """Generate and store Basic authorization token for use with API calls
-        that require user credentials."""
-        token = base64.b64encode('%s:%s' % (username, password))
-        self._auth_token = 'Basic %s' % token
+        url_info = self.baseurl.copy()
+        url_info['local_path'] = path.lstrip('/')
+        return '%(scheme)s://%(host)s%(path)s/%(local_path)s' % url_info
 
     def _check_pid_type(self, type):
         '''Several pid- and target-specific methods take a pid type, but only
@@ -180,9 +169,9 @@ class PidmanRestClient(object):
             'qualifier': qualifier,
         }
 
-    def _make_request(self, url, method='GET', body=None, expected_response=[200],
-        requires_auth=False, accept="application/json"):
-        ''' Make an API request.  Common functionality for making http requests
+    def _make_request(self, reqmeth, url, params=None, body=None,
+        expected_response=requests.codes.ok, accept="application/json"):
+        '''Make an API request.  Common functionality for making http requests
         and simple error handling.  Defaults are set so that simple access
         requests can specify very few parameters.
 
@@ -191,13 +180,11 @@ class PidmanRestClient(object):
         the response object is returned for any further processing.
 
         :param url: url to request
-        :param method: http method to use when making the request; default is GET
         :param body: data to send in request body, if any (optional)
+        :param params: dictionary of query string or post parameters, if any
         :param expected_response: expected http status code on the returned
             response; if the response does not match, an error is raised - can be
             either a single status code, or a list of valid codes; defaults to 200
-        :param requires_auth: boolean, defaults to False; when True, authorization
-            headers will be included in the request
         :param accept: expected/accepted content type in the response; defaults
             to application/json
 
@@ -205,71 +192,84 @@ class PidmanRestClient(object):
             format: if accept is ``application/json``, loads the response as JSON
             and returns the resulting object; if accept is ``text/plain``, returns
             the body of the response.  Otherwise, returns the
-            :class:`httplib.HTTPResponse` response object.
+            :class:`request.Response` response object.
         '''
-        if requires_auth:
-            # only include auth header when required
-            headers = self._secure_headers()
-        else:
-            headers = self.headers
+        method_name = reqmeth.__name__.upper()
+        request_options = {}
+        if body is not None:
+            request_options['data'] = body
+        if params is not None:
+            request_options['params'] = params
+        headers = {}
+        # any api calls that modify data require authentication
+        if method_name in ['PUT', 'POST', 'DELETE']:
+            # only include auth information when required
+            request_options['auth'] = self._auth
 
         # set headers that vary depending on the request
 
-        # set content length based on the actual body
+        # - set content length based on the actual body
         headers["Content-Length"] = len(body) if body is not None else 0
 
-        # set content type based on the data being sent (if any)
+        # - set content type based on the data being sent (if any)
         # for current implementation, we can make the following assumptions:
         # - all POST methods are currently form-encoded key=>value data
-        if method == 'POST':
+
+        if method_name == 'POST':
             headers["Content-type"] = "application/x-www-form-urlencoded"
         # - all PUT methods currently use JSON-encoded data in request body
-        elif method == 'PUT':
+        elif method_name == 'PUT':
             headers["Content-type"] = "application/json"
         # - expect no body for GET and DELETE requests, so no content-type
 
-        # expected result format
+        # - expected result format
         headers['Accept'] = accept
 
-        logger.debug('Request: %s %s %s <![BODY[%s]]>' % (method, url, headers, body))
-        self.connection.request(method, url, body, headers)
-        response = self.connection.getresponse()
-        # NOTE: occasionally getting an httplib.BadStatusLine error after runnning
-        # few requests in python shell; possibly happening after a certain
-        # time-delay, but unclear if this is a concern for real uses.
+        # absolutize url based on configured pidman base url
+        url = self.absolute_url(url)
+        logger.debug('Request: %s %s %s <![BODY[%s]]>', method_name, url, headers, body)
+        response = reqmeth(url, headers=headers, **request_options)
 
+        # convert expected response code into list for simpler comparison
         if not isinstance(expected_response, list):
             expected_response = [expected_response]
 
-        if response.status not in expected_response:
+        if response.status_code not in expected_response:
             # Some errors (e.g., bad request) include a more detailed error
             # message in response body - if present, add to error message detail
-            text = response.read()
+            text = response.content
             if text is not None and len(text):
-                detail = '%s: %s' % (response.reason, text)
+                detail = '%s: %s' % (response.status_code, text)
+                raise requests.exceptions.HTTPError(response, message=detail)
             else:
-                detail = response.reason
-
-            raise urllib2.HTTPError(url, response.status, detail, None, None)
+                response.raise_for_status()
+            # raise urllib2.HTTPError(url, response.status_code, detail, None, None)
         if accept == 'application/json':
-            response = json.loads(response.read())
-            self.connection.close()
-            return response
+            return response.json()
         elif accept == 'text/plain':
-            response = response.read()
-            self.connection.close()
-            return response
+            return response.content
         else:
-            self.connection.close()
             return response
+
+    def get(self, *args, **kwargs):
+        return self._make_request(self.session.get, *args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        return self._make_request(self.session.put, *args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        return self._make_request(self.session.post, *args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return self._make_request(self.session.delete, *args, **kwargs)
 
     def list_domains(self):
         """
         Returns the default domain list from the rest server.
-        """        
-        url = '%s/domains/' % self.baseurl['path']
-        return self._make_request(url)
-        
+        """
+        url = 'domains/'
+        return self.get(url)
+
     def create_domain(self, name, policy=None, parent=None):
         """
         Creates a POST request to the rest api with attributes to create
@@ -278,64 +278,64 @@ class PidmanRestClient(object):
         :param name: label or title for the new Domain (unicode)
         :param policy: policy title
         :param parent: parent uri
-        
+
         """
         # Do some error checking before we bother sending the request.
         if not name or name == '':
             raise Exception('Name value cannot be None or empty!')
 
         # build the request.
-        domain = {'name': name}
+        domain_info = {'name': name}
         # parent & policy are optional; only include in the request if specified
         if policy is not None:
-         domain['policy'] = policy
+            domain['policy'] = policy
         if parent is not None:
-          domain['parent'] =  parent
-        params = unicode_urlencode(domain)
-        url = '%s/domains/' % self.baseurl['path']
+            domain['parent'] =  parent
+        url = 'domains/'
         # returns the URI for the newly-created domain on success
-        return self._make_request(url, 'POST', params, expected_response=201,
-                            requires_auth=True, accept='text/plain')
+        return self.post(url, params=domain_info, expected_response=requests.codes.created,
+                         accept='text/plain')
 
     def get_domain(self, domain_id):
         """
         Requests a domain by id.
 
         :param domain_id: ID of the domain to return.
-        
-        """
-        url = '%s/domains/%s/' % (self.baseurl['path'], urllib.quote(str(domain_id)))
-        return self._make_request(url)
 
-    def update_domain(self, id, name=None, policy=None, parent=None):
+        """
+        url = 'domains/%s/' % urllib.quote(str(domain_id))
+        return self.get(url)
+
+    def update_domain(self, domain_id, name=None, policy=None, parent=None):
         """
         Updates an existing domain with new information.
 
-        :param name: label or title for the Domain
+        :param domain_id: ID of the domain to update
+        :param name: label or title for the domain
         :param policy: policy title
         :param parent: parent uri
-        
-        """
-        # Work a bit with the arguments to get them in a dict and filtered.
-        domain = {}
-        args = locals()
-        del args['self']
-        del args['id']
-        for key, value in args.items():
-            if value:
-                domain[key] = value
-        
-        # Setup the data to pass in the request.
-        url = '%s/domain/%s/' % (self.baseurl['path'], id)
-        body = '%s' % json.dumps(domain)
 
-        if not domain:
-            raise urllib2.HTTPError(url, 412, "No data provided for a valid updated", body, None)
+        """
+        domain_info = {}
+        if name is not None:
+            domain_info['name'] = name
+        if policy is not None:
+            domain_info['policy'] = policy
+        if parent is not None:
+            domain_info['parent'] = parent
+
+        # Setup the data to pass in the request.
+        url = 'domain/%s/' % domain_id
+        body = json.dumps(domain_info)
+
+        if not domain_info:
+            raise Exception("No domain update data specified")
 
         # If successful the view returns the object just updated.
-        return self._make_request(url, 'PUT', body, requires_auth=True)
+        return self.put(url, body)
 
-    def search_pids(self, pid=None, type=None, target=None, domain=None, domain_uri=None, page=None, count=None):
+    def search_pids(self, pid=None, type=None, target=None, domain=None,
+            domain_uri=None, page=None, count=None):
         """
         Queries the PID search api and returns the data results.
 
@@ -348,18 +348,12 @@ class PidmanRestClient(object):
         :param count: Number of results to return on a single page.
 
         """
-        # If any of the arguments have been set, construct a querystring out of
-        # them.  Skip anything left null.
-        query = {}
-        args = locals()
-        del args['self']
-        for key, value in args.items():
-            if value:
-                query[key] = value
+        # generate a dictionary with any parameters that are set
+        query = dict([(key, val) for key, val in locals().iteritems() if
+                      key not in ['self'] and val])
 
-        querystring = unicode_urlencode(query)
-        url = '%s/pids/?%s' % (self.baseurl['path'], querystring)
-        return self._make_request(url)
+        url = 'pids/'
+        return self.get(url, params=query)
 
     def create_pid(self, type, domain, target_uri, name=None, external_system=None,
                 external_system_key=None, policy=None, proxy=None,
@@ -398,20 +392,19 @@ class PidmanRestClient(object):
         if qualifier is not None:
             pid_opts['qualifier'] = qualifier
 
-        data = unicode_urlencode(pid_opts)
         # on success, returns new purl or ark in resolvable form as plain text
-        return self._make_request(url, 'POST', data, expected_response=201,
-                            requires_auth=True, accept='text/plain')
+        return self.post(url, pid_opts, expected_response=requests.codes.created,
+                         accept='text/plain')
 
     def create_purl(self, *args, **kwargs):
-         '''Convenience method to create a new PURL.  See :meth:`create_pid` for
-         details and supported parameters.'''
-         return self.create_pid('purl', *args, **kwargs)
+        '''Convenience method to create a new PURL.  See :meth:`create_pid` for
+        details and supported parameters.'''
+        return self.create_pid('purl', *args, **kwargs)
 
     def create_ark(self, *args, **kwargs):
-         '''Convenience method to create a new ARK.  See :meth:`create_pid` for
-         details and supported parameters.'''
-         return self.create_pid('ark', *args, **kwargs)
+        '''Convenience method to create a new ARK.  See :meth:`create_pid` for
+        details and supported parameters.'''
+        return self.create_pid('ark', *args, **kwargs)
 
     def get_pid(self, type, noid):
         """Get information about a single pid, identified by type and noid.
@@ -422,17 +415,17 @@ class PidmanRestClient(object):
         """
         # rest url for accessing the requested pid
         url = self._pid_url(type, noid)       # also checks pid type
-        return self._make_request(url)
+        return self.get(url)
 
     def get_purl(self, noid):
-         '''Convenience method to access information about a purl.  See
-         :meth:`get_pid` for more details.'''
-         return self.get_pid('purl', noid)
+        '''Convenience method to access information about a purl.  See
+        :meth:`get_pid` for more details.'''
+        return self.get_pid('purl', noid)
 
     def get_ark(self, noid):
-         '''Convenience method to access information about an ark.  See
-         :meth:`get_pid` for more details.'''
-         return self.get_pid('ark', noid)
+        '''Convenience method to access information about an ark.  See
+        :meth:`get_pid` for more details.'''
+        return self.get_pid('ark', noid)
 
     def get_target(self, type, noid, qualifier=''):
         '''Get information about a single purl or ark target, identified by pid
@@ -445,7 +438,7 @@ class PidmanRestClient(object):
         '''
         # generate target url and check pid type
         url = self._target_url(type, noid, qualifier)
-        return self._make_request(url)
+        return self.get(url)
 
     def get_purl_target(self, noid):
         'Convenience method to retrieve information about a purl target.'
@@ -459,9 +452,9 @@ class PidmanRestClient(object):
     def update_pid(self, type, noid, domain=None, name=None, external_system=None,
                 external_system_key=None, policy=None):
         '''Update an existing pid with new information.
-        
+
         :param type: type of pid (purl or ark)
-        :param domain: Domain pid should belong to (specify by REST resource URI)        
+        :param domain: Domain pid should belong to (specify by REST resource URI)
         :param name: name or identifier for the pid
         :param external_system: external system name
         :param external_system_id: pid identifier in specified external system
@@ -487,22 +480,22 @@ class PidmanRestClient(object):
 
         # all fields are optional, but at least *one* should be provided
         if not pid_info:
-            raise Exception("No update data specified!")
+            raise Exception("No update data specified")
 
         # Setup the data to pass in the request.
         data = json.dumps(pid_info)
         # If successful the view returns the object just updated.
-        return self._make_request(url, 'PUT', data, requires_auth=True)
+        return self.put(url, data)
 
     def update_purl(self, *args, **kwargs):
-         '''Convenience method to update an existing purl.  See :meth:`update_pid`
-         for details and supported parameters.'''
-         return self.update_pid('purl', *args, **kwargs)
+        '''Convenience method to update an existing purl.  See :meth:`update_pid`
+        for details and supported parameters.'''
+        return self.update_pid('purl', *args, **kwargs)
 
     def update_ark(self, *args, **kwargs):
-         '''Convenience method to update an existing ark.  See :meth:`update_pid`
-         for details and supported parameters.'''
-         return self.update_pid('ark', *args, **kwargs)
+        '''Convenience method to update an existing ark.  See :meth:`update_pid`
+        for details and supported parameters.'''
+        return self.update_pid('ark', *args, **kwargs)
 
     def update_target(self, type, noid, qualifier='', target_uri=None, proxy=None,
                       active=None):
@@ -537,28 +530,25 @@ class PidmanRestClient(object):
             raise Exception("No update data specified!")
 
         # for ARK, either 200 or 201 is valid (could actually create a new qualifier here)
+        success_codes = [requests.codes.ok]
         if type == 'ark':
-            success_code = [201, 200]
-        else:
-            success_code = 200
+            success_codes.append(requests.codes.created)
 
         # Setup the data to pass in the request.
         data = json.dumps(target_info)
-        return self._make_request(url, 'PUT', data, expected_response=success_code,
-                                  requires_auth=True)
-
+        return self.put(url, data, expected_response=success_codes)
 
     def update_purl_target(self, noid, *args, **kwargs):
-         '''Convenience method to update a single existing purl target.  See
-         :meth:`update_target` for details and supported parameters.  Qualifier
-         parameter should **not** be provided when using this method since
-         a PURL may only have one, unqualified target.'''
-         return self.update_target('purl', noid, '', *args, **kwargs)
+        '''Convenience method to update a single existing purl target.  See
+        :meth:`update_target` for details and supported parameters.  Qualifier
+        parameter should **not** be provided when using this method since
+        a PURL may only have one, unqualified target.'''
+        return self.update_target('purl', noid, '', *args, **kwargs)
 
     def update_ark_target(self, *args, **kwargs):
-         '''Convenience method to update a single existing ark target.  See
-         :meth:`update_target` for details and supported parameters.'''
-         return self.update_target('ark', *args, **kwargs)
+        '''Convenience method to update a single existing ark target.  See
+        :meth:`update_target` for details and supported parameters.'''
+        return self.update_target('ark', *args, **kwargs)
 
     def delete_ark_target(self, noid, qualifier=''):
         '''Delete an ARK target.  (Delete is not supported for PURL targets.)
@@ -567,9 +557,9 @@ class PidmanRestClient(object):
         :param qualifier: target qualifier; defaults to unqualified target
         :returns: True on successful deletion
         '''
-        type = 'ark'
+        pid_type = 'ark'
         # generate target url and check pid type
-        url = self._target_url(type, noid, qualifier)
-        self._make_request(url, 'DELETE', requires_auth=True, accept='text/plain')
+        url = self._target_url(pid_type, noid, qualifier)
+        self.delete(url, accept='text/plain')
         # no processing to do with the response - if status code was 200, success
         return True
