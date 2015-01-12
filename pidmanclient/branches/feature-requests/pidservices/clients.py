@@ -240,10 +240,11 @@ class PidmanRestClient(object):
             text = response.content
             if text is not None and len(text):
                 detail = '%s: %s' % (response.status_code, text)
-                raise requests.exceptions.HTTPError(response, message=detail)
+                raise requests.exceptions.HTTPError(detail, response=response)
             else:
+                # otherwise let requests raise the error
                 response.raise_for_status()
-            # raise urllib2.HTTPError(url, response.status_code, detail, None, None)
+
         if accept == 'application/json':
             return response.json()
         elif accept == 'text/plain':
@@ -263,12 +264,13 @@ class PidmanRestClient(object):
     def delete(self, *args, **kwargs):
         return self._make_request(self.session.delete, *args, **kwargs)
 
+    domain_url = '/domains/'
+
     def list_domains(self):
         """
         Returns the default domain list from the rest server.
         """
-        url = 'domains/'
-        return self.get(url)
+        return self.get(self.domain_url)
 
     def create_domain(self, name, policy=None, parent=None):
         """
@@ -288,12 +290,12 @@ class PidmanRestClient(object):
         domain_info = {'name': name}
         # parent & policy are optional; only include in the request if specified
         if policy is not None:
-            domain['policy'] = policy
+            domain_info['policy'] = policy
         if parent is not None:
-            domain['parent'] =  parent
-        url = 'domains/'
+            domain_info['parent'] =  parent
+
         # returns the URI for the newly-created domain on success
-        return self.post(url, params=domain_info, expected_response=requests.codes.created,
+        return self.post(self.domain_url, body=domain_info, expected_response=requests.codes.created,
                          accept='text/plain')
 
     def get_domain(self, domain_id):
@@ -303,7 +305,7 @@ class PidmanRestClient(object):
         :param domain_id: ID of the domain to return.
 
         """
-        url = 'domains/%s/' % urllib.quote(str(domain_id))
+        url = '%s%s/' % (self.domain_url, urllib.quote(str(domain_id)))
         return self.get(url)
 
     def update_domain(self, domain_id, name=None, policy=None, parent=None):
@@ -325,14 +327,14 @@ class PidmanRestClient(object):
             domain_info['parent'] = parent
 
         # Setup the data to pass in the request.
-        url = 'domain/%s/' % domain_id
+        url = '%s%s/' % (self.domain_url, urllib.quote(str(domain_id)))
         body = json.dumps(domain_info)
 
         if not domain_info:
             raise Exception("No domain update data specified")
 
         # If successful the view returns the object just updated.
-        return self.put(url, body)
+        return self.put(url, body=body)
 
     def search_pids(self, pid=None, type=None, target=None, domain=None,
             domain_uri=None, page=None, count=None):
@@ -485,7 +487,7 @@ class PidmanRestClient(object):
         # Setup the data to pass in the request.
         data = json.dumps(pid_info)
         # If successful the view returns the object just updated.
-        return self.put(url, data)
+        return self.put(url, body=data)
 
     def update_purl(self, *args, **kwargs):
         '''Convenience method to update an existing purl.  See :meth:`update_pid`
@@ -536,7 +538,7 @@ class PidmanRestClient(object):
 
         # Setup the data to pass in the request.
         data = json.dumps(target_info)
-        return self.put(url, data, expected_response=success_codes)
+        return self.put(url, body=data, expected_response=success_codes)
 
     def update_purl_target(self, noid, *args, **kwargs):
         '''Convenience method to update a single existing purl target.  See
