@@ -395,7 +395,7 @@ class PidmanRestClient(object):
             pid_opts['qualifier'] = qualifier
 
         # on success, returns new purl or ark in resolvable form as plain text
-        return self.post(url, pid_opts, expected_response=requests.codes.created,
+        return self.post(url, body=pid_opts, expected_response=requests.codes.created,
                          accept='text/plain')
 
     def create_purl(self, *args, **kwargs):

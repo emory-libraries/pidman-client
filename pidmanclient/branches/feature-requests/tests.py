@@ -239,12 +239,12 @@ class PidmanRestClientTest(unittest.TestCase):
                 kwargs['headers']['Content-type'],
                 'content-type should be form-encoded for POST data')
 
-            params = kwargs['params']
+            params = kwargs['data']
             self.assertEqual(domain, params['domain'],
                 'expected domain value set in posted data')
             self.assertEqual(target, params['target_uri'],
                 'expected target uri value set in posted data')
-            # unspecified parameters should not be set in query string args
+            # unspecified parameters should not be set in request
             self.assert_('name' not in params,
                 'unspecified parameter (name) not set in posted values')
             self.assert_('external_system_id' not in params,
@@ -275,8 +275,8 @@ class PidmanRestClientTest(unittest.TestCase):
                 'create_pid posts to expected url for new ark; should end with /ark/')
 
             args, kwargs = self.mock_post.call_args
-            # all optional values should be set in params
-            params = kwargs['params']
+            # all optional values should be set in request body
+            params = kwargs['data']
             self.assertEqual(name, params['name'],
                 'expected name value set in posted data')
             self.assertEqual(ext_sys, params['external_system_id'],
