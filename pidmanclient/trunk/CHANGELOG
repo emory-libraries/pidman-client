@@ -6,6 +6,7 @@ Below is a summary of changes to the application.
 1.2
 ---
 * New script for allocating a block of pids at once: *allocate_pids*
+* Update PidmanRestClient to use python-requests for HTTP calls
 
 1.1.2
 -----
