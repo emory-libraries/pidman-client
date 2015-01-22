@@ -5,11 +5,12 @@
 
 """
 
-import httplib
 import json
 import unittest
 import urllib2
 from urlparse import parse_qs
+from mock import patch, MagicMock
+import requests
 
 # from django.core.management import setup_environ
 from django.conf import settings
@@ -53,7 +54,7 @@ class MockHttpConnection():
         self.url = url
         self.postvalues = postvalues
         self.headers = headers
-        
+
     def getresponse(self):
         return self.response
 
@@ -75,14 +76,19 @@ class PidmanRestClientTest(unittest.TestCase):
         self.username = 'testuser'
         self.password = 'testuserpass'
 
+        # mock helper method for make request, which uses method name for logging
+        self.mock_get = MagicMock(__name__='get')
+        self.mock_post = MagicMock(__name__='post')
+        self.mock_put = MagicMock(__name__='put')
+        self.mock_delete = MagicMock(__name__='delete')
+        for mockmeth in [self.mock_get, self.mock_post, self.mock_put, self.mock_delete]:
+            mockmeth.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError
+
     def _new_client(self):
         """
-        Returns a client with a mock connection object for testing.
+        Initialize client with configured settings for testing.
         """
-        client = PidmanRestClient(self.baseurl, self.username, self.password)
-        mock = MockHttplib(client.baseurl['host'])
-        client.connection = mock.connection # Replace the normal connection for testing.
-        return client
+        return PidmanRestClient(self.baseurl, self.username, self.password)
 
     def test_constructor(self):
         """Tests the proper constructor values are set"""
@@ -94,71 +100,69 @@ class PidmanRestClientTest(unittest.TestCase):
         self.assertEqual(client.baseurl['path'],
             '/pidman', 'Path not correctly set for baseurl!')
 
-        # password should base64 encoded in an auth token
-        self.assert_('testuserpass' not in client._auth_token,
-            'Password has not been encoded!')
-
         # url with trailing slash - treated same as without
         client = PidmanRestClient('%s/' % self.baseurl)
         self.assertEqual(client.baseurl['path'],
-            '/pidman', 
+            '/pidman',
             'Path not correctly set when baseurl specified with trailing slash')
 
-    def test_connection(self):
-        'Test that client initializes correct type of http connection for ssl/non-ssl'
-        client = PidmanRestClient('http://pid.com/')
-        connection = client._get_connection()
-        self.assert_(isinstance(connection, httplib.HTTPConnection))
-        self.assertFalse(isinstance(connection, httplib.HTTPSConnection))
-
-        client = PidmanRestClient('https://pid.com/')
-        connection = client._get_connection()
-        self.assert_(isinstance(connection, httplib.HTTPSConnection))
-
-        client = PidmanRestClient('https://pid.com:8000/')
-        connection = client._get_connection()
-        self.assert_(isinstance(connection, httplib.HTTPSConnection))
-    
     def test_search_pids(self):
         """Tests the REST return for searching pids."""
         # Be a normal return.
         norm_client = self._new_client()
-        norm_client.connection.response.data = '[{"pid": "testblank"}]'
-        data = norm_client.search_pids({})
-        self.assertTrue(data, "No return when trying to search pids!!")
+        with patch.object(norm_client, 'session') as mocksession:
+            mocksession.get = self.mock_get
+            self.mock_get.return_value.json.return_value =  {"pid": "testblank"}
+            self.mock_get.return_value.status_code = requests.codes.ok
+            data = norm_client.search_pids()
+            self.assertTrue(data, "No return when trying to search pids!!")
+            # TODO: inspect request parameters?
 
         # This shoule error
         bad_client = self._new_client()
-        bad_client.connection.response.set_status(201)
-        self.assertRaises(urllib2.HTTPError, bad_client.search_pids)
+        with patch.object(bad_client, 'session') as mocksession:
+            mocksession.get = self.mock_get
+            self.mock_get.return_value.status_code = requests.codes.bad_request
+            # bad_client.connection.response.set_status(400)
+            self.assertRaises(requests.exceptions.HTTPError, bad_client.search_pids)
 
     def test_list_domains(self):
         """Tests the REST list domain method."""
         data_client = self._new_client()
-        data_client.connection.response.data = '[{"pid": "testblank"}]'
-        data = data_client.list_domains()
-        self.assertTrue(data, "No data returned when listing domains.")
-        self.assert_('AUTHORIZATION' not in data_client.connection.headers,
-            'auth header is not passed when listing domains')
+        with patch.object(data_client, 'session') as mocksession:
+            mocksession.get = self.mock_get
+            self.mock_get.return_value.json.return_value = {"pid": "testblank"}
+            self.mock_get.return_value.status_code = requests.codes.ok
+            data = data_client.list_domains()
+            self.assertTrue(data, "No data returned when listing domains.")
+            call_args = self.mock_get.call_args
+            self.assert_('auth' not in call_args,
+                'authentication should not be passed when listing domains')
 
-        # This shoule error
+        # This should error
         bad_client = self._new_client()
-        bad_client.connection.response.set_status(201)
-        self.assertRaises(urllib2.HTTPError, bad_client.search_pids)
+        with patch.object(bad_client, 'session') as mocksession:
+            mocksession.get = self.mock_get
+            self.mock_get.return_value.status_code = requests.codes.server_error
+            self.assertRaises(requests.exceptions.HTTPError, bad_client.search_pids)
 
     def test_create_domain(self):
         """Tests the creation of the domain."""
         # Test a normal working return.
         client = self._new_client()
-        client.connection.response.data = ''
-        client.connection.response.status = 201
-        client.create_domain('Test Domain')
-        # I'm actually just testing that this doesn't throw an error.
-        self.assertEqual(201, client.connection.response.status)
-        self.assert_('AUTHORIZATION'  in client.connection.headers,
-            'auth header is passed when creating a new domain')
-        self.assertEqual('text/plain', client.connection.headers['Accept'],
-            'Accept header should be set to text/plain when creating a new domain')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.post = self.mock_post
+            response = self.mock_post.return_value
+            response.content = ''
+            response.status_code = requests.codes.created
+            client.create_domain('Test Domain')
+            # I'm actually just testing that this doesn't throw an error.
+            self.mock_post.assert_called()
+            args, kwargs = self.mock_post.call_args
+            self.assert_('auth' in kwargs,
+                'authentication should be passed when creating a new domain')
+            self.assertEqual('text/plain', kwargs['headers']['Accept'],
+                'Accept header should be set to text/plain when creating a new domain')
 
         # This SHOULD thrown an error.
         bad_client = self._new_client()
@@ -167,376 +171,399 @@ class PidmanRestClientTest(unittest.TestCase):
     def test_get_domain(self):
         """Tests the request and return of a single domain."""
         client = self._new_client()
-        client.connection.response.data = '[{"id": 25, "name": "domain name"}]'
-        domain = client.get_domain(25)
-        self.assertEqual(25, domain[0]['id'])
-        self.assert_('AUTHORIZATION' not in client.connection.headers,
-            'auth header is not passed when accessing a single domain')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.get = self.mock_get
+            self.mock_get.return_value.status_code = requests.codes.ok
+            self.mock_get.return_value.json.return_value = [{"id": 25, "name": "domain name"}]
+            domain = client.get_domain(25)
+            self.assertEqual(25, domain[0]['id'])
 
     def test_update_domain(self):
         """Tests the update method for a single domain."""
         client = self._new_client()
-        client.connection.response.data = '[{"id": 25, "name": "The Updated Domain", "policy": "", "parent": ""}]'
-        domain = client.update_domain(25, name='The Updated Domain')
-        self.assert_('AUTHORIZATION'  in client.connection.headers,
-            'auth header is passed when updating a domain')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.put = self.mock_put
+            self.mock_put.return_value.json.return_value = {
+                "id": 25,
+                "name": "The Updated Domain",
+                "policy": "", "parent": ""
+            }
+            self.mock_put.return_value.status_code = requests.codes.ok
+            domain_id = 25
+            name = 'The Updated Domain'
+            domain = client.update_domain(domain_id, name=name)
+            self.mock_put.assert_called()
+            args, kwargs = self.mock_put.call_args
+            self.assert_('auth' in kwargs,
+                'auth header is passed when updating a domain')
+            self.assertEqual(name, json.loads(kwargs['data'])['name'])
 
-        # Test a normal response to ensure it's giving back a pythonic object.
-        self.assertEqual(200, client.connection.response.status) # Check the Return
-        self.assertEqual('The Updated Domain', domain[0]['name'], "Domain not parsed as expected!")
+            # Test a normal response to ensure it's giving back a pythonic object.
+            self.assertEqual('The Updated Domain', domain['name'],
+                "Domain not parsed as expected!")
 
-        # Make sure it throws an error if passed no Data.
-        client.connection.response.data = ''
-        self.assertRaises(urllib2.HTTPError, client.update_domain, 25)
+            # Make sure it throws an error if passed no data.
+            self.assertRaises(Exception, client.update_domain, 25)
 
-        # Make sure it returns other errors if returned by server.
-        client.connection.response.data = '[{"id": 25, "name": "The Updated Domain", "policy": "", "parent": ""}]'
-        client.connection.response.status = 500
-        self.assertRaises(urllib2.HTTPError, client.update_domain, 25, name="The Updated Domain")
+            # Make sure it returns other errors if returned by server.
+            self.mock_put.return_value.status_code = 500
+            self.assertRaises(requests.exceptions.HTTPError, client.update_domain,
+                              25, name="The Updated Domain")
 
     def test_create_pid(self):
         """Test creating pids."""
         # Test a normal working return.
         client = self._new_client()
         new_purl = 'http://pid.emory.edu/purl'      # fake new PURL to return
-        client.connection.response.data = new_purl
-        client.connection.response.status = 201
-        # minimum required parameters
-        domain, target = 'http://pid.emory.edu/domains/1/', 'http://some.url'
-        created = client.create_pid('purl', domain, target)
-        self.assertEqual(new_purl, created)
-        # base url configured for tests is /pidman
-        expected, got = '/pidman/purl/', client.connection.url
-        self.assertEqual(expected, got,
-            'create_pid posts to expected url for new purl; expected %s, got %s' % (expected, got))
-        self.assertEqual('POST', client.connection.method)
-        self.assert_('AUTHORIZATION' in client.connection.headers,
-            'auth header is passed when creating a pid')
-        self.assertEqual('text/plain', client.connection.headers['Accept'],
-            'Accept header should be set to text/plain when creating a new pid')
-        self.assertEqual('application/x-www-form-urlencoded',
-            client.connection.headers['Content-type'],
-            'content-type should be form-encoded for POST data')
-        # parse post values back into a dictionary - each value is a list
-        qs_opts = parse_qs(client.connection.postvalues)
-        self.assertEqual(domain, qs_opts['domain'][0],
-            'expected domain value set in posted data')
-        self.assertEqual(target, qs_opts['target_uri'][0],
-            'expected target uri value set in posted data')
-        # unspecified parameters should not be set in query string args
-        self.assert_('name' not in qs_opts,
-            'unspecified parameter (name) not set in posted values')
-        self.assert_('external_system_id' not in qs_opts,
-            'unspecified parameter (external system) not set in posted values')
-        self.assert_('external_system_key' not in qs_opts,
-            'unspecified parameter (external system key) not set in posted values')
-        self.assert_('policy' not in qs_opts,
-            'unspecified parameter (policy) not set in posted values')
-        self.assert_('proxy' not in qs_opts,
-            'unspecified parameter (proxy) not set in posted values')
-        self.assert_('qualifier' not in qs_opts,
-            'unspecified parameter (qualifier) not set in posted values')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.post = self.mock_post
+            response = self.mock_post.return_value
+            response.content = new_purl
+            response.status_code = requests.codes.created
 
-        # handle unicode characters in pid titles
-        created = client.create_pid('purl', domain, target, u'unicode \u2026 in title')
-        self.assert_(created, 'craete_pid succeeds when title contains non-ascii unicode')
+            # minimum required parameters
+            domain, target = 'http://pid.emory.edu/domains/1/', 'http://some.url'
+            created = client.create_pid('purl', domain, target)
+            self.assertEqual(new_purl, created)
 
-        # all parameters
-        name, ext_sys, ext_id, qual = 'my new pid', 'EUCLID', 'ocm1234', 'q'
-        policy, proxy = 'Not Guaranteed', 'EZProxy'
-        created = client.create_pid('ark', domain, target, name, ext_sys, ext_id,
-                                    policy, proxy, qual)
-        self.assertEqual(new_purl, created)
-        expected, got = '/pidman/ark/', client.connection.url
-        self.assertEqual(expected, got,
-            'create_pid posts to expected url for new ark; expected %s, got %s' % (expected, got))
-        qs_opts = parse_qs(client.connection.postvalues)
-        # all optional values should be set in query string
-        self.assertEqual(name, qs_opts['name'][0],
-            'expected name value set in posted data')
-        self.assertEqual(ext_sys, qs_opts['external_system_id'][0],
-            'expected external system id value set in posted data')
-        self.assertEqual(ext_id, qs_opts['external_system_key'][0],
-            'expected external system key value set in posted data')
-        self.assertEqual(policy, qs_opts['policy'][0],
-            'expected policy value set in posted data')
-        self.assertEqual(proxy, qs_opts['proxy'][0],
-            'expected proxy value set in posted data')
-        self.assertEqual(qual, qs_opts['qualifier'][0],
-            'expected qualifier value set in posted data')
+            args, kwargs = self.mock_post.call_args
+            url = args[0]
+            self.assert_(url.endswith('/purl/'),
+                'create_pid posts to expected url for new purl; should end with /purl/')
+
+            self.assert_('auth' in kwargs,
+                        'auth header is passed when creating a pid')
+            self.assertEqual('text/plain', kwargs['headers']['Accept'],
+                'Accept header should be set to text/plain when creating a new pid')
+            self.assertEqual('application/x-www-form-urlencoded',
+                kwargs['headers']['Content-type'],
+                'content-type should be form-encoded for POST data')
+
+            params = kwargs['data']
+            self.assertEqual(domain, params['domain'],
+                'expected domain value set in posted data')
+            self.assertEqual(target, params['target_uri'],
+                'expected target uri value set in posted data')
+            # unspecified parameters should not be set in request
+            self.assert_('name' not in params,
+                'unspecified parameter (name) not set in posted values')
+            self.assert_('external_system_id' not in params,
+                'unspecified parameter (external system) not set in posted values')
+            self.assert_('external_system_key' not in params,
+                'unspecified parameter (external system key) not set in posted values')
+            self.assert_('policy' not in params,
+                'unspecified parameter (policy) not set in posted values')
+            self.assert_('proxy' not in params,
+                'unspecified parameter (proxy) not set in posted values')
+            self.assert_('qualifier' not in params,
+                'unspecified parameter (qualifier) not set in posted values')
+
+            # handle unicode characters in pid titles
+            created = client.create_pid('purl', domain, target, u'unicode \u2026 in title')
+            self.assert_(created, 'craete_pid succeeds when title contains non-ascii unicode')
+
+            # all parameters
+            name, ext_sys, ext_id, qual = 'my new pid', 'EUCLID', 'ocm1234', 'q'
+            policy, proxy = 'Not Guaranteed', 'EZProxy'
+            created = client.create_pid('ark', domain, target, name, ext_sys, ext_id,
+                                        policy, proxy, qual)
+            self.assertEqual(new_purl, created)
+            args, kwargs = self.mock_post.call_args
+
+            url = args[0]
+            self.assert_(url.endswith('/ark/'),
+                'create_pid posts to expected url for new ark; should end with /ark/')
+
+            args, kwargs = self.mock_post.call_args
+            # all optional values should be set in request body
+            params = kwargs['data']
+            self.assertEqual(name, params['name'],
+                'expected name value set in posted data')
+            self.assertEqual(ext_sys, params['external_system_id'],
+                'expected external system id value set in posted data')
+            self.assertEqual(ext_id, params['external_system_key'],
+                'expected external system key value set in posted data')
+            self.assertEqual(policy, params['policy'],
+                'expected policy value set in posted data')
+            self.assertEqual(proxy, params['proxy'],
+                'expected proxy value set in posted data')
+            self.assertEqual(qual, params['qualifier'],
+                'expected qualifier value set in posted data')
+
+            # 400 - bad request
+            self.mock_post.return_value.status_code = requests.codes.bad_request
+            # when response has body text, should be included in error
+            # (can't figure out how to test this in python 2.6; use assertRaisesRegex in 2.7)
+            self.mock_post.return_value.content = 'Error: Could not resolve domain URI'
+            self.assertRaises(requests.exceptions.HTTPError, client.create_pid, 'ark', 'domain-2',
+                            'http://pid.com/')
 
         # invalid pid type should cause an exception
         self.assertRaises(Exception, client.create_pid, 'faux-pid')
 
         # shortcut methods
-        client.create_purl(domain, target)
-        expected, got = '/pidman/purl/', client.connection.url
-        self.assertEqual(expected, got,
-            'create_purl posts to expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('POST', client.connection.method)
-        client.create_ark(domain, target)
-        expected, got = '/pidman/ark/', client.connection.url
-        self.assertEqual(expected, got,
-            'create_ark posts to expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('POST', client.connection.method)
+        with patch.object(client, 'create_pid') as mockcreate_pid:
+            client.create_purl(domain, target)
+            mockcreate_pid.assert_called_with('purl', domain, target)
 
-        # 400 - bad request
-        client.connection.response.status = 400
-        # when response has body text, should be included in error
-        # (can't figure out how to test this in python 2.6; use assertRaisesRegex in 2.7)
-        client.connection.response.data = 'Error: Could not resolve domain URI'
-        self.assertRaises(urllib2.HTTPError, client.create_pid, 'ark', 'domain-2',
-                          'http://pid.com/')
+            client.create_ark(domain, target)
+            mockcreate_pid.assert_called_with('ark', domain, target)
 
     def test_get_pid(self):
         """Test retrieving info about a pid."""
         # Test a normal working return.
         client = self._new_client()
         pid_data = {'domain': 'foo', 'name': 'bar'}
-        client.connection.response.data = json.dumps(pid_data)
-        client.connection.response.status = 200
-        pid_info = client.get_pid('purl', 'aa')
-        self.assertEqual(pid_data, pid_info)
-        # base url configured for tests is /pidman
-        expected, got = '/pidman/purl/aa', client.connection.url
-        self.assertEqual(expected, got,
-            'get_pid requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('GET', client.connection.method)
-        self.assert_('AUTHORIZATION' not in client.connection.headers,
-            'auth header is passed when accessing a pid')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.get = self.mock_get
+            response = self.mock_get.return_value
+            response.json.return_value = pid_data
+            response.status_code = requests.codes.ok  # 200
+            pid_info = client.get_pid('purl', 'aa')
+            self.assertEqual(pid_data, pid_info)
+
+            args, kwargs = self.mock_get.call_args
+            url = args[0]
+            self.assert_(url.endswith('/purl/aa'),
+                'get_pid requests expected url; should end with /purl/aa')
+
+            # 404 - pid not found
+            response.status_code = requests.codes.not_found
+            self.assertRaises(requests.exceptions.HTTPError, client.get_pid, 'ark', 'ee')
 
         # shortcut methods
-        client.get_purl('cc')
-        expected, got = '/pidman/purl/cc', client.connection.url
-        self.assertEqual(expected, got,
-            'get_purl requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('GET', client.connection.method)
-        client.get_ark('dd')
-        expected, got = '/pidman/ark/dd', client.connection.url
-        self.assertEqual(expected, got,
-            'get_ark requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('GET', client.connection.method)
+        with patch.object(client, 'get_pid') as mockget_pid:
+            client.get_purl('cc')
+            mockget_pid.assert_called_with('purl', 'cc')
 
-        # 404 - pid not found
-        client.connection.response.status = 404
-        self.assertRaises(urllib2.HTTPError, client.get_pid, 'ark', 'ee')
+            client.get_ark('dd')
+            mockget_pid.assert_called_with('ark', 'dd')
+
 
     def test_get_target(self):
         """Test retrieving info about a pid target."""
         # Test a normal working return.
         client = self._new_client()
         target_data = {'target_uri': 'http://foo.bar/', 'active': True}
-        client.connection.response.data = json.dumps(target_data)
-        client.connection.response.status = 200
-        target_info = client.get_target('purl', 'aa')
-        self.assertEqual(target_data, target_info)
-        # base url configured for tests is /pidman
-        expected, got = '/pidman/purl/aa/', client.connection.url
-        self.assertEqual(expected, got,
-            'get_target requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('GET', client.connection.method)
-        self.assert_('AUTHORIZATION' not in client.connection.headers,
-            'auth header is not passed when accessing a target')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.get = self.mock_get
+            response = self.mock_get.return_value
+            response.json.return_value = target_data
+            response.status_code = requests.codes.ok # 200
+            target_info = client.get_target('purl', 'aa')
+            self.assertEqual(target_data, target_info)
+            args, kwargs = self.mock_get.call_args
+            # expected, got = '/pidman/purl/aa/', client.connection.url
+            url = args[0]
+            self.assert_(url.endswith('/purl/aa/'),
+                'get_target requests expected url; should end with /purl/aa/')
 
-        # target qualifier
-        target_info = client.get_target('ark', 'bb', 'PDF')
-        expected, got = '/pidman/ark/bb/PDF', client.connection.url
-        self.assertEqual(expected, got,
-            'get_target requests expected url; expected %s, got %s' % (expected, got))
+            self.assert_('auth' not in kwargs,
+                'auth header is not passed when accessing a target')
+
+            # target qualifier
+            target_info = client.get_target('ark', 'bb', 'PDF')
+            args, kwargs = self.mock_get.call_args
+            url = args[0]
+            self.assert_(url.endswith('/ark/bb/PDF'),
+                'get_target requests expected url; should end with /ark/bb/PDF')
+
+            # 404 - target not found
+            response.status_code = requests.codes.not_found # 404
+            self.assertRaises(requests.exceptions.HTTPError, client.get_target, 'ark', 'ee')
 
         # shortcut methods
-        client.get_purl_target('cc')
-        expected, got = '/pidman/purl/cc/', client.connection.url
-        self.assertEqual(expected, got,
-            'get_purl_target requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('GET', client.connection.method)
-        client.get_ark_target('dd', 'XML')
-        expected, got = '/pidman/ark/dd/XML', client.connection.url
-        self.assertEqual(expected, got,
-            'get_ark_target requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('GET', client.connection.method)
+        with patch.object(client, 'get_target') as mockget_target:
+            client.get_purl_target('cc')
+            mockget_target.assert_called_with('purl', 'cc')
 
-        # 404 - target not found
-        client.connection.response.status = 404
-        self.assertRaises(urllib2.HTTPError, client.get_target, 'ark', 'ee')
+            client.get_ark_target('dd', 'XML')
+            mockget_target.assert_called_with('ark', 'dd', 'XML')
+
 
     def test_update_pid(self):
         """Test updating an existing pid."""
         # Test a normal working return.
         client = self._new_client()
         pid_info = {'pid': 'foo'}
-        client.connection.response.data = json.dumps(pid_info)
-        client.connection.response.status = 200
-        # minimum required parameters
-        pid = client.update_pid('purl', 'aa', name='new name')
-        self.assertEqual(pid, pid_info)
-        # base url configured for tests is /pidman
-        expected, got = '/pidman/purl/aa', client.connection.url
-        self.assertEqual(expected, got,
-            'update_pid requested expected url for update purl; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
-        self.assert_('AUTHORIZATION' in client.connection.headers,
-            'auth header is passed when updating a pid')
-        self.assertEqual('application/json', client.connection.headers['Content-type'],
-            'content-type should be JSON for PUT data')
-        # request body is JSON-encoded update values
-        opts = json.loads(client.connection.postvalues)
-        self.assertEqual('new name', opts['name'],
-            'requested new name value set in request data')
-        # unspecified parameters should not be set in posted data
-        self.assert_('domain' not in opts,
-            'unspecified parameter (domain) not set in posted values')
-        self.assert_('external_system_id' not in opts,
-            'unspecified parameter (external system) not set in posted values')
-        self.assert_('external_system_key' not in opts,
-            'unspecified parameter (external system key) not set in posted values')
-        self.assert_('policy' not in opts,
-            'unspecified parameter (policy) not set in posted values')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.put = self.mock_put
+            response = self.mock_put.return_value
+            response.json.return_value = pid_info
+            response.status_code = requests.codes.ok # 200
 
-        # all parameters
-        domain = 'http://pid.emory.edu/domains/1/'
-        name, ext_sys, ext_id = 'my new pid', 'EUCLID', 'ocm1234'
-        policy = 'Not Guaranteed'
-        pid = client.update_pid('ark', 'bb', domain, name, ext_sys,
+            # minimum required parameters
+            pid = client.update_pid('purl', 'aa', name='new name')
+            self.assertEqual(pid, pid_info)
+
+            # base url configured for tests is /pidman
+            args, kwargs = self.mock_put.call_args
+            # expected, got = '/pidman/purl/aa', client.connection.url
+            url = args[0]
+            self.assert_(url.endswith('/purl/aa'),
+                'update_pid requested expected url for update purl; should end with /purl/aa')
+            self.assert_(kwargs['auth'],
+                'auth header is passed when updating a pid')
+            self.assertEqual('application/json', kwargs['headers']['Content-type'],
+                'content-type should be JSON for PUT data')
+            # request body is JSON-encoded update values
+            opts = json.loads(kwargs['data'])
+            self.assertEqual('new name', opts['name'],
+                'requested new name value set in request data')
+            # unspecified parameters should not be set in posted data
+            self.assert_('domain' not in opts,
+                'unspecified parameter (domain) not set in posted values')
+            self.assert_('external_system_id' not in opts,
+                'unspecified parameter (external system) not set in posted values')
+            self.assert_('external_system_key' not in opts,
+                'unspecified parameter (external system key) not set in posted values')
+            self.assert_('policy' not in opts,
+                'unspecified parameter (policy) not set in posted values')
+
+            # all parameters
+            domain = 'http://pid.emory.edu/domains/1/'
+            name, ext_sys, ext_id = 'my new pid', 'EUCLID', 'ocm1234'
+            policy = 'Not Guaranteed'
+            pid = client.update_pid('ark', 'bb', domain, name, ext_sys,
                                     ext_id, policy)
-        expected, got = '/pidman/ark/bb', client.connection.url
-        self.assertEqual(expected, got,
-            'update_pid requests to expected url for new ark; expected %s, got %s' % (expected, got))
-        opts = json.loads(client.connection.postvalues)
-        # all optional values should be set in query string
-        self.assertEqual(domain, opts['domain'],
-            'expected domain value set in posted data')
-        self.assertEqual(ext_sys, opts['external_system_id'],
-            'expected external system id value set in posted data')
-        self.assertEqual(ext_id, opts['external_system_key'],
-            'expected external system key value set in posted data')
-        self.assertEqual(policy, opts['policy'],
-            'expected policy value set in posted data')
+            args, kwargs = self.mock_put.call_args
+            url = args[0]
+            self.assert_(url.endswith('/ark/bb'),
+                'update_pid requests to expected url for new ark; should end with /ark/bb')
+            opts = json.loads(kwargs['data'])
+            # all optional values should be set in query string
+            self.assertEqual(domain, opts['domain'],
+                'expected domain value set in posted data')
+            self.assertEqual(ext_sys, opts['external_system_id'],
+                'expected external system id value set in posted data')
+            self.assertEqual(ext_id, opts['external_system_key'],
+                'expected external system key value set in posted data')
+            self.assertEqual(policy, opts['policy'],
+                'expected policy value set in posted data')
 
-        # empty values are valid - e.g., blank out previous value
-        pid = client.update_pid('ark', 'bb', domain='', name='')
-        opts = json.loads(client.connection.postvalues)
-        # all optional values should be set in query string
-        self.assertEqual('', opts['domain'],
-            'expected domain value set in posted data')
-        self.assertEqual('', opts['name'],
-            'expected name value set in posted data')
+            # empty values are valid - e.g., blank out previous value
+            pid = client.update_pid('ark', 'bb', domain='', name='')
+            args, kwargs = self.mock_put.call_args
+            opts = json.loads(kwargs['data'])
+            # all optional values should be set in query string
+            self.assertEqual('', opts['domain'],
+                'expected domain value set in posted data')
+            self.assertEqual('', opts['name'],
+                'expected name value set in posted data')
+
+            # 404 - pid not found
+            response.status_code = requests.codes.not_found # 404
+            self.assertRaises(requests.exceptions.HTTPError, client.update_pid, 'ark', 'ee', 'domain')
 
         # invalid pid type should cause an exception
         self.assertRaises(Exception, client.update_pid, 'faux-pid')
 
         # shortcut methods
-        client.update_purl('aa', domain, name)
-        expected, got = '/pidman/purl/aa', client.connection.url
-        self.assertEqual(expected, got,
-            'update_purl requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
-        client.update_ark('bb', domain, name)
-        expected, got = '/pidman/ark/bb', client.connection.url
-        self.assertEqual(expected, got,
-            'update_ark requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
+        with patch.object(client, 'update_pid') as mockupdate_pid:
+            client.update_purl('aa', domain, name)
+            mockupdate_pid.assert_alled_with('purl', 'aa', domain, name)
 
-        # 404 - pid not found
-        client.connection.response.status = 404
-        self.assertRaises(urllib2.HTTPError, client.update_pid, 'ark', 'ee', 'domain')
-
+            client.update_ark('bb', domain, name)
+            mockupdate_pid.assert_alled_with('ark', 'bb', domain, name)
 
     def test_update_target(self):
         """Test updating an existing target."""
         # Test a normal working return.
         client = self._new_client()
         target_info = {'target_uri': 'http://foo.bar/'}
-        client.connection.response.data = json.dumps(target_info)
-        client.connection.response.status = 200
-        # minimum required parameters
-        target = client.update_target('purl', 'aa', active=False)
-        self.assertEqual(target, target_info)
-        # base url configured for tests is /pidman
-        expected, got = '/pidman/purl/aa/', client.connection.url
-        self.assertEqual(expected, got,
-            'update_target requested expected url for update purl target; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
-        self.assert_('AUTHORIZATION' in client.connection.headers,
-            'auth header is passed when updating a target')
-        # request body is JSON-encoded update values
-        opts = json.loads(client.connection.postvalues)
-        self.assertEqual(False, opts['active'],
-            'update active value set in request data')
-        # unspecified parameters should not be set in posted data
-        self.assert_('target_uri' not in opts,
-            'unspecified parameter (target_uri) not set in update values')
-        self.assert_('proxy' not in opts,
-            'unspecified parameter (proxy) not set in update values')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.put = self.mock_put
+            response = self.mock_put.return_value
+            response.json.return_value = target_info
+            response.status_code = requests.codes.ok # 200
 
-        # all parameters
-        target, proxy, active = 'http://pid.com', 'MyProxy', True
-        client.update_target('ark', 'bb', 'PDF', target, proxy, active)
-        expected, got = '/pidman/ark/bb/PDF', client.connection.url
-        self.assertEqual(expected, got,
-            'update_target requests expected url for ark target; expected %s, got %s' % (expected, got))
-        opts = json.loads(client.connection.postvalues)
-        # all optional values should be set in query string
-        self.assertEqual(target, opts['target_uri'],
-            'expected target value set in update data')
-        self.assertEqual(proxy, opts['proxy'],
-            'expected proxy value set in update data')
-        self.assertEqual(active, opts['active'],
-            'expected active value set in update data')
+            # minimum required parameters
+            target = client.update_target('purl', 'aa', active=False)
+            self.assertEqual(target, target_info)
 
-        # empty values are valid - e.g., blank out previous value
-        client.update_target('ark', 'bb', 'XML', target_uri='', proxy='')
-        opts = json.loads(client.connection.postvalues)
-        # all optional values should be set in query string
-        self.assertEqual('', opts['target_uri'],
-            'expected target value set in posted data')
-        self.assertEqual('', opts['proxy'],
-            'expected proxy value set in posted data')
+            # base url configured for tests is /pidman
+            args, kwargs = self.mock_put.call_args
+            url = args[0]
+            self.assert_(url.endswith('/purl/aa/'),
+                'update_target url for update purl target should end with "/purl/aa/"')
+            self.assert_(kwargs['auth'],
+                'auth header is passed when updating a target')
+
+            # request body is JSON-encoded update values
+            opts = json.loads(kwargs['data'])
+            self.assertEqual(False, opts['active'],
+                'update active value set in request data')
+            # unspecified parameters should not be set in posted data
+            self.assert_('target_uri' not in opts,
+                'unspecified parameter (target_uri) not set in update values')
+            self.assert_('proxy' not in opts,
+                'unspecified parameter (proxy) not set in update values')
+
+            # all parameters
+            target, proxy, active = 'http://pid.com', 'MyProxy', True
+            client.update_target('ark', 'bb', 'PDF', target, proxy, active)
+            args, kwargs = self.mock_put.call_args
+            url = args[0]
+            self.assert_(url.endswith('ark/bb/PDF'),
+                'update_target url for ark target should end with ark/bb/PDF')
+
+            opts = json.loads(kwargs['data'])
+            # all optional values should be set in query string
+            self.assertEqual(target, opts['target_uri'],
+                'expected target value set in update data')
+            self.assertEqual(proxy, opts['proxy'],
+                'expected proxy value set in update data')
+            self.assertEqual(active, opts['active'],
+                'expected active value set in update data')
+
+            # empty values are valid - e.g., blank out previous value
+            client.update_target('ark', 'bb', 'XML', target_uri='', proxy='')
+            args, kwargs = self.mock_put.call_args
+            opts = json.loads(kwargs['data'])
+            # all optional values should be set in query string
+            self.assertEqual('', opts['target_uri'],
+                'expected target value set in posted data')
+            self.assertEqual('', opts['proxy'],
+                'expected proxy value set in posted data')
+
+            # 404 - target not found
+            response.status_code = requests.codes.not_found
+            self.assertRaises(requests.exceptions.HTTPError, client.update_target, 'ark', 'ee', active=False)
 
         # invalid pid type should cause an exception
         self.assertRaises(Exception, client.update_target, 'faux-pid', 'bb')
 
         # shortcut methods
-        client.update_purl_target('aa', target, proxy)
-        expected, got = '/pidman/purl/aa/', client.connection.url
-        self.assertEqual(expected, got,
-            'update_purl_target requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
-        client.update_ark_target('bb', 'PDF', target_uri=target, proxy=proxy)
-        expected, got = '/pidman/ark/bb/PDF', client.connection.url
-        self.assertEqual(expected, got,
-            'update_ark_target requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
-        # can actually create a *new* ark target using update - returns 201
-        client.connection.response.status = 201
-        client.update_ark_target('bb', 'NEW-qual', target_uri=target)
-        expected, got = '/pidman/ark/bb/NEW-qual', client.connection.url
-        self.assertEqual(expected, got,
-            'update_ark_target requests expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('PUT', client.connection.method)
+        with patch.object(client, 'update_target') as mockupdate_target:
+            client.update_purl_target('aa', target, proxy)
+            # '' = empty qualifier
+            mockupdate_target.assert_called_with('purl', 'aa', '', target, proxy)
 
-        # 404 - target not found
-        client.connection.response.status = 404
-        self.assertRaises(urllib2.HTTPError, client.update_target, 'ark', 'ee', active=False)
+            client.update_ark_target('bb', 'NEW-qual', target_uri=target)
+            mockupdate_target.assert_called_with('ark', 'bb', 'NEW-qual', target_uri=target)
 
     def test_delete_target(self):
         """Test deleting an existing target."""
         # Test a normal working return.
         client = self._new_client()
-        client.connection.response.status = 200
-        deleted = client.delete_ark_target('aa')
-        self.assertTrue(deleted, 'delete_ark_target returns True on successul delete')
-        # base url configured for tests is /pidman
-        expected, got = '/pidman/ark/aa/', client.connection.url
-        self.assertEqual(expected, got,
-            'delete_target requested expected url; expected %s, got %s' % (expected, got))
-        self.assertEqual('DELETE', client.connection.method)
-        self.assert_('AUTHORIZATION' in client.connection.headers,
-            'auth header is passed when deleting a target')
+        with patch.object(client, 'session') as mocksession:
+            mocksession.delete = self.mock_delete
+            self.mock_delete.return_value.status_code = requests.codes.ok # 200
+            deleted = client.delete_ark_target('aa')
+            self.assertTrue(deleted, 'delete_ark_target returns True on successul delete')
+            # base url configured for tests is /pidman
+            args, kwargs = self.mock_delete.call_args
+            url = args[0]
+            self.assert_(url.endswith('/ark/aa/'),
+                'delete_target url should end with /ark/aa/')
 
-        # 404 - target not found
-        client.connection.response.status = 404
-        self.assertRaises(urllib2.HTTPError, client.delete_ark_target, 'ee', 'pdf')
+            self.assert_('auth' in kwargs,
+                'auth header is passed when deleting a target')
+
+            # 404 - target not found
+            self.mock_delete.return_value.status_code = requests.codes.not_found # 404
+            self.mock_delete.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError
+            self.assertRaises(requests.exceptions.HTTPError, client.delete_ark_target, 'ee', 'pdf')
 
 
 # Test the Django wrapper code for pidman Client.
@@ -548,22 +575,18 @@ class DjangoPidmanRestClientTest(unittest.TestCase):
         self.assertEqual(client.baseurl['host'],
             'testpidman.library.emory.edu',
             'Client Base URL %s not expected value.' % client.baseurl)
-            
-        # credentials are used to generate a Basic Auth token
-        # reverse the Basic Auth header construction to confirm expected values
-        basic_auth = client._auth_token[len('Basic '):]
-        username, password = basic_auth.decode('base64').split(':')
-        self.assertEqual(username, 'testuser',
+
+        # credentials are stored for passing to request
+        username, password = client._auth
+        self.assertEqual('testuser', username,
             'Client username %s not the expected value' % username)
-        self.assertEqual(password, 'testpass',
+        self.assertEqual('testpass', password,
             'Client password %s is not expected value' % password)
 
      def test_runtime_error(self):
         'Test Django init without required Django settings'
         del settings.PIDMAN_HOST
         self.assertRaises(RuntimeError, DjangoPidmanRestClient)
-
-
 
 class IsArkTest(unittest.TestCase):
 
@@ -615,7 +638,7 @@ class ParseArkTest(unittest.TestCase):
         self.assertEqual(ark_parts['nma'], parsed_ark['nma'])
         self.assertEqual(ark_parts['naan'], parsed_ark['naan'])
         self.assertEqual(ark_parts['noid'], parsed_ark['noid'])
-        self.assertEqual(ark_parts['qual'], parsed_ark['qualifier'])  
+        self.assertEqual(ark_parts['qual'], parsed_ark['qualifier'])
 
         # short-form ark
         parsed_ark = parse_ark('ark:/%(naan)s/%(noid)s' % ark_parts)
@@ -638,7 +661,7 @@ class ParseArkTest(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     loader = unittest.TestLoader()
-    
+
     test_cases = (
         PidmanRestClientTest,
         DjangoPidmanRestClientTest,
@@ -647,7 +670,7 @@ def suite():
     )
     for test_case in test_cases:
         suite.addTests(loader.loadTestsFromTestCase(test_case))
-        
+
     return suite
 
 if __name__ == '__main__':
