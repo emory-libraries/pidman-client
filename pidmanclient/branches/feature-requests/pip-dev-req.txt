@@ -1,4 +1,0 @@
-sphinx
-coverage
-unittest-xml-reporting
-django
