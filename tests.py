@@ -157,7 +157,6 @@ class PidmanRestClientTest(unittest.TestCase):
             response.status_code = requests.codes.created
             client.create_domain('Test Domain')
             # I'm actually just testing that this doesn't throw an error.
-            self.mock_post.assert_called()
             args, kwargs = self.mock_post.call_args
             self.assert_('auth' in kwargs,
                 'authentication should be passed when creating a new domain')
@@ -192,7 +191,6 @@ class PidmanRestClientTest(unittest.TestCase):
             domain_id = 25
             name = 'The Updated Domain'
             domain = client.update_domain(domain_id, name=name)
-            self.mock_put.assert_called()
             args, kwargs = self.mock_put.call_args
             self.assert_('auth' in kwargs,
                 'auth header is passed when updating a domain')
@@ -461,10 +459,10 @@ class PidmanRestClientTest(unittest.TestCase):
         # shortcut methods
         with patch.object(client, 'update_pid') as mockupdate_pid:
             client.update_purl('aa', domain, name)
-            mockupdate_pid.assert_alled_with('purl', 'aa', domain, name)
+            mockupdate_pid.assert_called_with('purl', 'aa', domain, name)
 
             client.update_ark('bb', domain, name)
-            mockupdate_pid.assert_alled_with('ark', 'bb', domain, name)
+            mockupdate_pid.assert_called_with('ark', 'bb', domain, name)
 
     def test_update_target(self):
         """Test updating an existing target."""
