@@ -2,4 +2,4 @@ sphinx
 coverage
 nose
 django
-mock
+

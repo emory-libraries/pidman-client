@@ -9,7 +9,7 @@ from fabric.context_managers import cd, hide, settings
 from fabric.contrib import files
 from fabric.contrib.console import confirm
 
-import pidman
+# import pidman
 
 ##
 # automated build/test tasks
