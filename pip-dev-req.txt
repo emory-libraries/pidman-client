@@ -1,5 +1,5 @@
 sphinx
 coverage
-unittest-xml-reporting
+nose
 django
 mock
