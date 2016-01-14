@@ -1,0 +1,10 @@
+*.pyc
+localsettings.py
+doc/build
+parser.out
+parsetab.py
+build/
+dist/
+pidservices/test-results
+test-results
+.coverage
