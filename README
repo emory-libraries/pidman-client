@@ -4,6 +4,12 @@ Overview
 Pidman Services provides a central library of services for external applications
 to interact with the Pid Manager application.
 
+License
+-------
+
+This software is distributed under the Apache 2.0 License.
+
+
 Components
 ----------
 
