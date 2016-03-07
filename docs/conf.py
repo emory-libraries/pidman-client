@@ -99,12 +99,24 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = 'default'
+html_theme = 'alabaster'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_style = 'style.css'
+html_theme_options = {
+    # 'logo': 'logo.png',
+    'github_user': 'emory-libraries',
+    'github_repo': 'pidmanclient',
+    # 'travis_button': True,  # enable when we get travis-ci set up
+    'description': 'Persistent Identifier Client services'
+    # 'analytics_id':
+}
+html_sidebars = {
+    '**': ['about.html', 'navigation.html',
+          'searchbox.html', 'sidebar_footer.html'],
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -181,7 +193,7 @@ htmlhelp_basename = 'PidmanRestClientdoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'PidmanRestClient.tex', u'Pidman Rest Client Documentation',
-   u'Scott Turnbull', 'manual'),
+   u'Emory University Libraries and IT Services', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
