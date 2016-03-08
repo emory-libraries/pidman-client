@@ -4,14 +4,18 @@ Code Documentation
 The following is documentation of generated from introspection of the code
 itself.
 
-clients
+.. _codedocs-client:
+
+Clients
 -------
 
 .. automodule:: pidservices.clients
    :members:
 
 
-Django integration
+.. _django-shortcuts:
+
+Django Integration
 ------------------
 
 .. automodule:: pidservices.djangowrapper
@@ -21,7 +25,7 @@ Django integration
    :members:
 
 
-Convenience methods
+Convenience Methods
 -------------------
 
  .. automethod:: pidservices.clients.is_ark
