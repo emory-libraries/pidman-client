@@ -31,15 +31,10 @@ This software is distributed under the Apache 2.0 License.
 Components
 ^^^^^^^^^^
 
-.. note that using a ref here works fine, but it doesn't display
-   correctly on the github repo homepage.
-
-..:ref:`pidservices.clients <codedocs-client>`
 ``pidservices.clients``
     Python client for access to the pidman Rest API and utility methods
     for dealing with ARKs
 
-..:ref:`pidservices.djangowrapper.shortcuts <django-shortcuts>`
 ``pidservices.djangowrapper.shortcuts``
     Convenience version of the REST API client initialized using
     Django settings
@@ -58,3 +53,7 @@ the setup script as `python setup.py test`.  For continuous
 integration, enable coverage and xunit output like this::
 
     py.test --cov=pidservices --cov-report xml --junitxml=tests.xml
+
+Or run use `setup.py` to install dependencies and test requirements like this::
+
+    python setup.py test --addopts "--cov=pidservices --cov-report xml --junitxml=junit_tests.xml"
