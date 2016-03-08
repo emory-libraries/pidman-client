@@ -1,6 +1,22 @@
 Overview
 --------
 
+.. image:: https://travis-ci.org/emory-libraries/pidmanclient.svg?branch=develop
+    :alt: Travis-CI build status
+    :target: https://travis-ci.org/emory-libraries/pidmanclient
+
+.. image:: https://coveralls.io/repos/github/emory-libraries/pidmanclient/badge.svg?branch=develop
+   :target: https://coveralls.io/github/emory-libraries/pidmanclient?branch=develop
+   :alt: Code Coverage
+
+.. image:: https://codeclimate.com/github/emory-libraries/pidmanclient/badges/gpa.svg
+   :target: https://codeclimate.com/github/emory-libraries/pidmanclient
+   :alt: Code Climate
+
+.. image:: https://requires.io/github/emory-libraries/pidmanclient/requirements.svg?branch=develop
+     :target: https://requires.io/github/emory-libraries/pidmanclient/requirements/?branch=develop
+     :alt: Requirements Status
+
 **pidservices** provides a python module with client code for interacting
 with the
 `Pid Manager application <https://github.com/emory-libraries/pidman>`_
