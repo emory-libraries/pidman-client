@@ -44,6 +44,11 @@ Components
     Convenience version of the REST API client initialized using
     Django settings
 
+scripts
+    The scripts directory includes some example scripts for batch processing
+    pid actions, such as allocating a preseet number of ARKs or migrating
+    a set of ARK target urls from one url pattern to another.
+
 
 Testing
 ^^^^^^^

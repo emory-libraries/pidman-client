@@ -1,0 +1,6 @@
+languages:
+  Python: true
+exclude_paths:
+- "scripts/migrate_lsdi_arks.py"
+- "scripts/migrate_pid_urls.py"
+- "scripts/migrate_rushdie_arks.py"
