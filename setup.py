@@ -12,5 +12,5 @@ setup(
     ],
     setup_requires=['pytest-runner'],
     scripts=['scripts/allocate_pids',],
-    tests_require=['pytest', 'django', 'mock>=1.3.0', 'pytest-cov'],
+    tests_require=['pytest', 'django', 'mock>=1.0.1', 'pytest-cov'],
 )
