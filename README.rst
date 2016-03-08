@@ -27,3 +27,13 @@ Components
 ``pidservices.djangowrapper.shortcuts``
     Convenience version of the REST API client initialized using
     Django settings
+
+
+Testing
+^^^^^^^
+
+Tests can be run using `py.test <https://pytest.org/>`_ directly, or via
+the setup script as `python setup.py test`.  For continuous
+integration, enable coverage and xunit output like this::
+
+    py.test --cov=pidservices --cov-report xml --junitxml=tests.xml

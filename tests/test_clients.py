@@ -7,17 +7,15 @@
 
 import json
 import unittest
-import urllib2
-from urlparse import parse_qs
 from mock import patch, MagicMock
 import requests
 
 # from django.core.management import setup_environ
 from django.conf import settings
 settings.configure(
-            PIDMAN_HOST = 'http://testpidman.library.emory.edu/',
-            PIDMAN_USER = 'testuser',
-            PIDMAN_PASSWORD = 'testpass',
+    PIDMAN_HOST='http://testpidman.library.emory.edu/',
+    PIDMAN_USER='testuser',
+    PIDMAN_PASSWORD='testpass',
 )
 
 from pidservices.clients import PidmanRestClient, is_ark, parse_ark
@@ -112,7 +110,7 @@ class PidmanRestClientTest(unittest.TestCase):
         norm_client = self._new_client()
         with patch.object(norm_client, 'session') as mocksession:
             mocksession.get = self.mock_get
-            self.mock_get.return_value.json.return_value =  {"pid": "testblank"}
+            self.mock_get.return_value.json.return_value = {"pid": "testblank"}
             self.mock_get.return_value.status_code = requests.codes.ok
             data = norm_client.search_pids()
             self.assertTrue(data, "No return when trying to search pids!!")

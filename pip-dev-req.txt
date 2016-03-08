@@ -1,6 +1,5 @@
-pbr
 sphinx>=1.3.6
-coverage
-nose
+pytest
+pytest-cov
 django
 mock>=1.3.0
