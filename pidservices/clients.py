@@ -73,10 +73,12 @@ class PidmanRestClient(object):
         'path': None,
     }
     _auth = None
+    # Requests verifies SSL certificates for HTTPS requests, just like a web browser.
+    # By default, SSL verification is enabled, and Requests will throw a SSLError if
+    # it's unable to verify the certificate.
     headers = {
         'User-Agent': 'PidmanRestClient/%s (python-requests/%s)' % \
-            (__version__, requests.__version__),
-        'verify': True # veryify SSL certs by default
+            (__version__, requests.__version__)
     }
 
     pid_types = ['ark', 'purl']
@@ -97,10 +99,12 @@ class PidmanRestClient(object):
         self.session = requests.Session()
         # Set headers that should be passed with every request
 
+        # Requests verifies SSL certificates for HTTPS requests, just like a web browser.
+        # By default, SSL verification is enabled, and Requests will throw a SSLError if
+        # it's unable to verify the certificate.
         self.session.headers = {
             'User-Agent': 'pidmanclient/%s (python-requests/%s)' % \
-                (__version__, requests.__version__),
-            'verify': True,  # verify SSL certs by default
+                (__version__, requests.__version__)
         }
         # store auth if credentials were specified
         if username and password:
@@ -207,10 +211,10 @@ class PidmanRestClient(object):
             request_options['auth'] = self._auth
 
         # set headers that vary depending on the request
+        # All headers must be strings.
 
         # - set content length based on the actual body
-        headers["Content-Length"] = len(body) if body is not None else 0
-
+        headers["Content-Length"] = str(len(body)) if body is not None else '0'
         # - set content type based on the data being sent (if any)
         # for current implementation, we can make the following assumptions:
         # - all POST methods are currently form-encoded key=>value data
@@ -229,7 +233,6 @@ class PidmanRestClient(object):
         url = self.absolute_url(url)
         logger.debug('Request: %s %s %s <![BODY[%s]]>', method_name, url, headers, body)
         response = reqmeth(url, headers=headers, **request_options)
-
         # convert expected response code into list for simpler comparison
         if not isinstance(expected_response, list):
             expected_response = [expected_response]
