@@ -1,0 +1,181 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Pidman Client &mdash; Pidman Rest Client 1.3.0-dev documentation</title>
+    
+    <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.3.0-dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Pidman Rest Client 1.3.0-dev documentation" href="#" />
+    <link rel="next" title="Code Documentation" href="codedoc.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="pidman-client">
+<h1>Pidman Client<a class="headerlink" href="#pidman-client" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="codedoc.html">Code Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="codedoc.html#module-pidservices.clients">Clients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="codedoc.html#module-pidservices.djangowrapper">Django Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="codedoc.html#convenience-methods">Convenience Methods</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Version Information</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id1">1.2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id2">1.1.2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id3">1.1.1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id4">1.1.0</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#id5">1.0.0</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<a class="reference external image-reference" href="https://travis-ci.org/emory-libraries/pidmanclient"><img alt="Travis-CI build status" src="https://travis-ci.org/emory-libraries/pidmanclient.svg?branch=develop" /></a>
+<a class="reference external image-reference" href="https://coveralls.io/github/emory-libraries/pidmanclient?branch=develop"><img alt="Code Coverage" src="https://coveralls.io/repos/github/emory-libraries/pidmanclient/badge.svg?branch=develop" /></a>
+<a class="reference external image-reference" href="https://codeclimate.com/github/emory-libraries/pidmanclient"><img alt="Code Climate" src="https://codeclimate.com/github/emory-libraries/pidmanclient/badges/gpa.svg" /></a>
+<a class="reference external image-reference" href="https://requires.io/github/emory-libraries/pidmanclient/requirements/?branch=develop"><img alt="Requirements Status" src="https://requires.io/github/emory-libraries/pidmanclient/requirements.svg?branch=develop" /></a>
+<p><strong>pidservices</strong> provides a python module with client code for interacting
+with the
+<a class="reference external" href="https://github.com/emory-libraries/pidman">Pid Manager application</a>
+via REST API.</p>
+<div class="section" id="license">
+<h3>License<a class="headerlink" href="#license" title="Permalink to this headline">¶</a></h3>
+<p>This software is distributed under the Apache 2.0 License.</p>
+</div>
+<div class="section" id="components">
+<h3>Components<a class="headerlink" href="#components" title="Permalink to this headline">¶</a></h3>
+<dl class="docutils">
+<dt><code class="docutils literal"><span class="pre">pidservices.clients</span></code></dt>
+<dd>Python client for access to the pidman Rest API and utility methods
+for dealing with ARKs</dd>
+<dt><code class="docutils literal"><span class="pre">pidservices.djangowrapper.shortcuts</span></code></dt>
+<dd>Convenience version of the REST API client initialized using
+Django settings</dd>
+<dt>scripts</dt>
+<dd>The scripts directory includes some example scripts for batch processing
+pid actions, such as allocating a preseet number of ARKs or migrating
+a set of ARK target urls from one url pattern to another.</dd>
+</dl>
+</div>
+<div class="section" id="testing">
+<h3>Testing<a class="headerlink" href="#testing" title="Permalink to this headline">¶</a></h3>
+<p>Tests can be run using <a class="reference external" href="https://pytest.org/">py.test</a> directly, or via
+the setup script as <cite>python setup.py test</cite>.  For continuous
+integration, enable coverage and xunit output like this:</p>
+<div class="highlight-python"><div class="highlight"><pre>py.test --cov=pidservices --cov-report xml --junitxml=tests.xml
+</pre></div>
+</div>
+<p>Or run use <cite>setup.py</cite> to install dependencies and test requirements like this:</p>
+<div class="highlight-python"><div class="highlight"><pre>python setup.py test --addopts &quot;--cov=pidservices --cov-report xml --junitxml=junit_tests.xml&quot;
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span>Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span>Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span>Search Page</span></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">Pidman Rest Client</a></h1>
+
+
+
+<p class="blurb">Persistent Identifier Client services</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=emory-libraries&repo=pidmanclient&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="codedoc.html">Code Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Version Information</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script><div class="lits">
+<p>Powered by:</p>
+<img src="_static/LITS-logo-bk.png" alt="Emory LITS" />
+</div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;Copyright 2010, Emory University General Library.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+      |
+      <a href="_sources/index.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Code Documentation &mdash; Pidman Rest Client 1.3.0-dev documentation</title>
+    
+    <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.3.0-dev',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Pidman Rest Client 1.3.0-dev documentation" href="index.html" />
+    <link rel="next" title="Version Information" href="changelog.html" />
+    <link rel="prev" title="Pidman Client" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="code-documentation">
+<h1>Code Documentation<a class="headerlink" href="#code-documentation" title="Permalink to this headline">¶</a></h1>
+<p>The following is documentation of generated from introspection of the code
+itself.</p>
+<div class="section" id="module-pidservices.clients">
+<span id="clients"></span><span id="codedocs-client"></span><h2>Clients<a class="headerlink" href="#module-pidservices.clients" title="Permalink to this headline">¶</a></h2>
+<p><em>&#8220;No question is so difficult to answer as that to which the answer is
+obvious.&#8221;</em> - <strong>Karl Bismark</strong></p>
+<p>Module contains classes that build clients to interact with the Pidman Application
+via services.</p>
+<dl class="class">
+<dt id="pidservices.clients.PidmanRestClient">
+<em class="property">class </em><code class="descclassname">pidservices.clients.</code><code class="descname">PidmanRestClient</code><span class="sig-paren">(</span><em>url</em>, <em>username=''</em>, <em>password=''</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides minimal REST client support for the pidmanager REST API.  See
+that project documentation for details on the REST API.  This class will
+build encapsulated calls to the Pidman Rest API service.</p>
+<p>API calls that create, delete, or modify objects require valid credentials
+for a user with appropriate permissions.  API calls are made using Basic
+Authorization, which base64 encodes username and password.  It is recommended
+to use HTTPS for any REST API calls that require credentials.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>baseurl</strong> &#8211; base url of the api for the pidman REST service., e.g.
+<code class="docutils literal"><span class="pre">http://my.domain.com/pidserver</span></code></li>
+<li><strong>username</strong> &#8211; optional username for REST API access</li>
+<li><strong>password</strong> &#8211; optional password</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.absolute_url">
+<code class="descname">absolute_url</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.absolute_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prep an API URL for access based on base url.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.create_ark">
+<code class="descname">create_ark</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.create_ark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to create a new ARK.  See <a class="reference internal" href="#pidservices.clients.PidmanRestClient.create_pid" title="pidservices.clients.PidmanRestClient.create_pid"><code class="xref py py-meth docutils literal"><span class="pre">create_pid()</span></code></a> for
+details and supported parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.create_domain">
+<code class="descname">create_domain</code><span class="sig-paren">(</span><em>name</em>, <em>policy=None</em>, <em>parent=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.create_domain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a POST request to the rest api with attributes to create
+a new domain.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> &#8211; label or title for the new Domain (unicode)</li>
+<li><strong>policy</strong> &#8211; policy title</li>
+<li><strong>parent</strong> &#8211; parent uri</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.create_pid">
+<code class="descname">create_pid</code><span class="sig-paren">(</span><em>type</em>, <em>domain</em>, <em>target_uri</em>, <em>name=None</em>, <em>external_system=None</em>, <em>external_system_key=None</em>, <em>policy=None</em>, <em>proxy=None</em>, <em>qualifier=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.create_pid" title="Permalink to this definition">¶</a></dt>
+<dd><p>POST a request to the REST api with the specified values to create a new
+pid with a single target.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>type</strong> &#8211; type of pid to create (purl or ark)</li>
+<li><strong>domain</strong> &#8211; Domain new pid should belong to (specify by REST resource URI)</li>
+<li><strong>target_uri</strong> &#8211; URI the pid target should resolve to</li>
+<li><strong>name</strong> &#8211; name or identifier for the pid (unicode)</li>
+<li><strong>external_system</strong> &#8211; external system name</li>
+<li><strong>external_system_id</strong> &#8211; pid identifier in specified external system</li>
+<li><strong>policy</strong> &#8211; policy title</li>
+<li><strong>proxy</strong> &#8211; proxy name</li>
+<li><strong>qualifier</strong> &#8211; (ARK only) create a qualified target</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">newly created ARK or PURL in resolvable form</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">string</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.create_purl">
+<code class="descname">create_purl</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.create_purl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to create a new PURL.  See <a class="reference internal" href="#pidservices.clients.PidmanRestClient.create_pid" title="pidservices.clients.PidmanRestClient.create_pid"><code class="xref py py-meth docutils literal"><span class="pre">create_pid()</span></code></a> for
+details and supported parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.delete_ark_target">
+<code class="descname">delete_ark_target</code><span class="sig-paren">(</span><em>noid</em>, <em>qualifier=''</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.delete_ark_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete an ARK target.  (Delete is not supported for PURL targets.)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>noid</strong> &#8211; noid identifier for the pid the target belongs to</li>
+<li><strong>qualifier</strong> &#8211; target qualifier; defaults to unqualified target</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">True on successful deletion</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.get_ark">
+<code class="descname">get_ark</code><span class="sig-paren">(</span><em>noid</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.get_ark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to access information about an ark.  See
+<a class="reference internal" href="#pidservices.clients.PidmanRestClient.get_pid" title="pidservices.clients.PidmanRestClient.get_pid"><code class="xref py py-meth docutils literal"><span class="pre">get_pid()</span></code></a> for more details.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.get_ark_target">
+<code class="descname">get_ark_target</code><span class="sig-paren">(</span><em>noid</em>, <em>qualifier</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.get_ark_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to retrieve information about an ark target.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.get_domain">
+<code class="descname">get_domain</code><span class="sig-paren">(</span><em>domain_id</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.get_domain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Requests a domain by id.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>domain_id</strong> &#8211; ID of the domain to return.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.get_pid">
+<code class="descname">get_pid</code><span class="sig-paren">(</span><em>type</em>, <em>noid</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.get_pid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get information about a single pid, identified by type and noid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>type</strong> &#8211; type of pid (ark or purl)</li>
+<li><strong>noid</strong> &#8211; noid identifier for the requested pid</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary of information about the requested pid</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.get_purl">
+<code class="descname">get_purl</code><span class="sig-paren">(</span><em>noid</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.get_purl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to access information about a purl.  See
+<a class="reference internal" href="#pidservices.clients.PidmanRestClient.get_pid" title="pidservices.clients.PidmanRestClient.get_pid"><code class="xref py py-meth docutils literal"><span class="pre">get_pid()</span></code></a> for more details.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.get_purl_target">
+<code class="descname">get_purl_target</code><span class="sig-paren">(</span><em>noid</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.get_purl_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to retrieve information about a purl target.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.get_target">
+<code class="descname">get_target</code><span class="sig-paren">(</span><em>type</em>, <em>noid</em>, <em>qualifier=''</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.get_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get information about a single purl or ark target, identified by pid
+type, noid, and qualifier.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>type</strong> &#8211; type of pid (ark or purl)</li>
+<li><strong>noid</strong> &#8211; noid identifier for the pid the target belongs to</li>
+<li><strong>qualifier</strong> &#8211; target qualifier - defaults to unqualified target</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary of information about the requested target</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.list_domains">
+<code class="descname">list_domains</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.list_domains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the default domain list from the rest server.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.search_pids">
+<code class="descname">search_pids</code><span class="sig-paren">(</span><em>pid=None</em>, <em>type=None</em>, <em>target=None</em>, <em>domain=None</em>, <em>domain_uri=None</em>, <em>page=None</em>, <em>count=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.search_pids" title="Permalink to this definition">¶</a></dt>
+<dd><p>Queries the PID search api and returns the data results.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>domain</strong> &#8211; Exact domain name for pid</li>
+<li><strong>domain_uri</strong> &#8211; URI of a domain.</li>
+<li><strong>type</strong> &#8211; purl or ark</li>
+<li><strong>pid</strong> &#8211; Exact pid value</li>
+<li><strong>target</strong> &#8211; Exact target uri</li>
+<li><strong>page</strong> &#8211; Page number of results to return</li>
+<li><strong>count</strong> &#8211; Number of results to return on a single page.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.update_ark">
+<code class="descname">update_ark</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.update_ark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to update an existing ark.  See <a class="reference internal" href="#pidservices.clients.PidmanRestClient.update_pid" title="pidservices.clients.PidmanRestClient.update_pid"><code class="xref py py-meth docutils literal"><span class="pre">update_pid()</span></code></a>
+for details and supported parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.update_ark_target">
+<code class="descname">update_ark_target</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.update_ark_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to update a single existing ark target.  See
+<a class="reference internal" href="#pidservices.clients.PidmanRestClient.update_target" title="pidservices.clients.PidmanRestClient.update_target"><code class="xref py py-meth docutils literal"><span class="pre">update_target()</span></code></a> for details and supported parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.update_domain">
+<code class="descname">update_domain</code><span class="sig-paren">(</span><em>domain_id</em>, <em>name=None</em>, <em>policy=None</em>, <em>parent=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.update_domain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Updates an existing domain with new information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>domain_id</strong> &#8211; ID of the domain to update</li>
+<li><strong>name</strong> &#8211; label or title for the domain</li>
+<li><strong>policy</strong> &#8211; policy title</li>
+<li><strong>parent</strong> &#8211; parent uri</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.update_pid">
+<code class="descname">update_pid</code><span class="sig-paren">(</span><em>type</em>, <em>noid</em>, <em>domain=None</em>, <em>name=None</em>, <em>external_system=None</em>, <em>external_system_key=None</em>, <em>policy=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.update_pid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update an existing pid with new information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>type</strong> &#8211; type of pid (purl or ark)</li>
+<li><strong>domain</strong> &#8211; Domain pid should belong to (specify by REST resource URI)</li>
+<li><strong>name</strong> &#8211; name or identifier for the pid</li>
+<li><strong>external_system</strong> &#8211; external system name</li>
+<li><strong>external_system_id</strong> &#8211; pid identifier in specified external system</li>
+<li><strong>policy</strong> &#8211; policy title</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary of information for the update pid</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.update_purl">
+<code class="descname">update_purl</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.update_purl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to update an existing purl.  See <a class="reference internal" href="#pidservices.clients.PidmanRestClient.update_pid" title="pidservices.clients.PidmanRestClient.update_pid"><code class="xref py py-meth docutils literal"><span class="pre">update_pid()</span></code></a>
+for details and supported parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.update_purl_target">
+<code class="descname">update_purl_target</code><span class="sig-paren">(</span><em>noid</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.update_purl_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience method to update a single existing purl target.  See
+<a class="reference internal" href="#pidservices.clients.PidmanRestClient.update_target" title="pidservices.clients.PidmanRestClient.update_target"><code class="xref py py-meth docutils literal"><span class="pre">update_target()</span></code></a> for details and supported parameters.  Qualifier
+parameter should <strong>not</strong> be provided when using this method since
+a PURL may only have one, unqualified target.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pidservices.clients.PidmanRestClient.update_target">
+<code class="descname">update_target</code><span class="sig-paren">(</span><em>type</em>, <em>noid</em>, <em>qualifier=''</em>, <em>target_uri=None</em>, <em>proxy=None</em>, <em>active=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.PidmanRestClient.update_target" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update a single pid target.</p>
+<p>This method can be used to add new targets to an existing ARK.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>type</strong> &#8211; type of pid the target belongs to (purl or ark)</li>
+<li><strong>noid</strong> &#8211; noid identifier for the pid the target belongs to</li>
+<li><strong>qualifier</strong> &#8211; target qualifier; defaults to unqualified target</li>
+<li><strong>target_uri</strong> &#8211; URI the target should resolve to</li>
+<li><strong>proxy</strong> &#8211; name of the proxy that should be used to resolve the target</li>
+<li><strong>active</strong> &#8211; boolean, indicating whether the target should be considered
+active (inactive targets will not be resolved)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">dictionary of information about the updated target.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="pidservices.clients.is_ark">
+<code class="descclassname">pidservices.clients.</code><code class="descname">is_ark</code><span class="sig-paren">(</span><em>str</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.is_ark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if a string matches a regular expression for an ARK, in either
+resolvable url form or short-form id, with or without qualifiers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>str</strong> &#8211; string to check</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><code class="xref py py-class docutils literal"><span class="pre">re.MatchObject</span></code> or None (can be treated as a boolean)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pidservices.clients.parse_ark">
+<code class="descclassname">pidservices.clients.</code><code class="descname">parse_ark</code><span class="sig-paren">(</span><em>ark</em><span class="sig-paren">)</span><a class="headerlink" href="#pidservices.clients.parse_ark" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse an ARK into its component parts.  Uses the same regular expression
+as <a class="reference internal" href="#pidservices.clients.is_ark" title="pidservices.clients.is_ark"><code class="xref py py-meth docutils literal"><span class="pre">is_ark()</span></code></a>; matches both short and resolvable
+ARKs, with and without qualifiers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ark</strong> &#8211; ARK string to parse</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">dictionary with parsed ARK information or None if the regular
+expression does not match.  Dictionary keys in the return:<ul class="simple">
+<li><strong>nma</strong> - Name Mapping Authority (base url portion of resolvable ark)</li>
+<li><strong>naan</strong> - Name Assigning Authority Number</li>
+<li><strong>noid</strong> - Nice Opaque Identifier</li>
+<li><strong>qualifier</strong> - qualifier</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-pidservices.djangowrapper">
+<span id="django-integration"></span><span id="django-shortcuts"></span><h2>Django Integration<a class="headerlink" href="#module-pidservices.djangowrapper" title="Permalink to this headline">¶</a></h2>
+<p><em>&#8220;It turns out that an eerie type of chaos can lurk just behind a facade of
+order - and yet, deep inside the chaos lurks an even eerier type of order&#8221;</em></p>
+<ul class="simple">
+<li><strong>Douglas Hostadler</strong></li>
+</ul>
+<p>Provides a minimal Django wrapper for various pidman services to load
+various Django settings.</p>
+<span class="target" id="module-pidservices.djangowrapper.shortcuts"></span><dl class="class">
+<dt id="pidservices.djangowrapper.shortcuts.DjangoPidmanRestClient">
+<em class="property">class </em><code class="descclassname">pidservices.djangowrapper.shortcuts.</code><code class="descname">DjangoPidmanRestClient</code><a class="headerlink" href="#pidservices.djangowrapper.shortcuts.DjangoPidmanRestClient" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wraps <code class="xref py py-class docutils literal"><span class="pre">PidmanRestClient</span></code> to use Pidman host and connection
+information from the Django settings file instead of having to define it in
+the class call.</p>
+<p>NOTE:  The following values <strong>MUST</strong> be added to your project&#8217;s django
+settings.py file for this class to work properly:</p>
+<div class="highlight-python"><div class="highlight"><pre>PIDMAN_HOST = &#39;&#39; # base url for the pidman server to query. e.g.,
+    ``http://pid.emory.edu/``
+PIDMAN_USER = &#39;&#39; # Username for authentication to the pidman app.
+PIDMAN_PASSWORD = &#39;&#39; # Pasword for username above.
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="convenience-methods">
+<h2>Convenience Methods<a class="headerlink" href="#convenience-methods" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="method">
+<dt>
+<code class="descclassname">clients.</code><code class="descname">is_ark</code><span class="sig-paren">(</span><em>str</em><span class="sig-paren">)</span></dt>
+<dd><p>Check if a string matches a regular expression for an ARK, in either
+resolvable url form or short-form id, with or without qualifiers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>str</strong> &#8211; string to check</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><code class="xref py py-class docutils literal"><span class="pre">re.MatchObject</span></code> or None (can be treated as a boolean)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt>
+<code class="descclassname">clients.</code><code class="descname">parse_ark</code><span class="sig-paren">(</span><em>ark</em><span class="sig-paren">)</span></dt>
+<dd><p>Parse an ARK into its component parts.  Uses the same regular expression
+as <a class="reference internal" href="#pidservices.clients.is_ark" title="pidservices.clients.is_ark"><code class="xref py py-meth docutils literal"><span class="pre">is_ark()</span></code></a>; matches both short and resolvable
+ARKs, with and without qualifiers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ark</strong> &#8211; ARK string to parse</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">dictionary with parsed ARK information or None if the regular
+expression does not match.  Dictionary keys in the return:<ul class="simple">
+<li><strong>nma</strong> - Name Mapping Authority (base url portion of resolvable ark)</li>
+<li><strong>naan</strong> - Name Assigning Authority Number</li>
+<li><strong>noid</strong> - Nice Opaque Identifier</li>
+<li><strong>qualifier</strong> - qualifier</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div></blockquote>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Pidman Rest Client</a></h1>
+
+
+
+<p class="blurb">Persistent Identifier Client services</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=emory-libraries&repo=pidmanclient&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Code Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-pidservices.clients">Clients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-pidservices.djangowrapper">Django Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#convenience-methods">Convenience Methods</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Version Information</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script><div class="lits">
+<p>Powered by:</p>
+<img src="_static/LITS-logo-bk.png" alt="Emory LITS" />
+</div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;Copyright 2010, Emory University General Library.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+      |
+      <a href="_sources/codedoc.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
