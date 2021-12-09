@@ -10,7 +10,7 @@ import json
 import logging
 import re
 import urllib
-from urlparse import urlparse
+from urllib.parse import urlparse
 import requests
 
 from pidservices import __version__
