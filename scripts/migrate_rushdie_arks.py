@@ -11,7 +11,7 @@
 #   for top level object see link (getDatastreamDissemination)
 
 import sys
-import httplib
+import http.client as httplib
 import json
 import urllib2
 from urlparse import parse_qs
