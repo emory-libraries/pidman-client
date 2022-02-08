@@ -3,7 +3,7 @@
 # Script to find and replace netloc of pids in a given domain.
 
 import sys
-import httplib
+import http.client as httplib
 import json
 import urllib2
 from urlparse import parse_qs
